@@ -125,9 +125,10 @@ export function portraitLayout(
 ): { pad: number; drawW: number; drawH: number; ox: number; oy: number } {
   const iw = img.naturalWidth || img.width;
   const ih = img.naturalHeight || img.height;
-  const orillasBand = (p.orillas / 100) * Math.min(CW, CH);
-  const pad = Math.max(orillasBand, CW * 0.02);
-  const s = Math.min((CW - 2 * pad) / iw, (CH - 2 * pad) / ih) * p.retratoZoom;
+  // Sin margen forzado: sólo ORILLAS. Con orillas 0 el grabado sangra al borde.
+  const pad = (p.orillas / 100) * Math.min(CW, CH);
+  const fitFn = p.retratoFit === 'entera' ? Math.min : Math.max;
+  const s = fitFn((CW - 2 * pad) / iw, (CH - 2 * pad) / ih) * p.retratoZoom;
   const drawW = iw * s;
   const drawH = ih * s;
   const ox = (CW - drawW) / 2 + p.retratoOffX * drawW * 0.5;
@@ -185,7 +186,6 @@ export function renderPortraitTo(
   const wavePhase = 2 * Math.PI * phase; // la onda viaja: bucle sin costura
   const maxAmp = spacing * 0.9 * (p.marea / 100);
   const reliefAmt = (p.retratoRelieve / 100) * spacing * 6;
-  const tilt = Math.max(-1.2, Math.min(1.2, Math.tan((p.curso * Math.PI) / 180)));
 
   // --- campo de flujo: deriva circular (loop perfecto) o libre ---
   const flow = new SimplexNoise(p.semilla);
@@ -199,10 +199,8 @@ export function renderPortraitTo(
     ty = phase * 0.7;
   }
 
-  const stepX = Math.max(CW / 1400, spacing / 4);
-
-  const wave = (x: number): number => {
-    const t = k * x + wavePhase;
+  const wave = (s: number): number => {
+    const t = k * s + wavePhase;
     switch (p.retratoTrazo) {
       case 'zigzag': return (2 / Math.PI) * Math.asin(Math.sin(t));
       case 'recta': return 0;
@@ -219,116 +217,113 @@ export function renderPortraitTo(
 
   ctx.fillStyle = ink;
 
-  // ---------- trama principal (horizontal) ----------
-  for (let li = 0; li < nLines; li++) {
-    const y0 = areaY0 + spacing * (li + 0.5);
-    let top: Array<[number, number]> = [];
-    let bot: Array<[number, number]> = [];
+  /**
+   * Barrido genérico de trama en la dirección `thetaRad`: líneas paralelas
+   * separadas `spacing` que cubren TODO el lienzo a cualquier inclinación
+   * (extensión = proyección del lienzo sobre la normal, como en PATRÓN).
+   * `getHalf` decide la media-anchura del ribbon según tono y taper —
+   * devolver <0.12 corta la línea (pen up).
+   */
+  const sweep = (
+    thetaRad: number,
+    noiseOff: number,
+    withWave: boolean,
+    getHalf: (dark: number, taper: number) => number,
+  ): void => {
+    const ux = Math.cos(thetaRad), uy = Math.sin(thetaRad);
+    const nvx = -uy, nvy = ux; // normal a la línea
+    const ccx = CW / 2, ccy = CH / 2;
+    const halfLen = Math.hypot(CW, CH) / 2 + spacing;
+    const halfExt = (Math.abs(CW * nvx) + Math.abs(CH * nvy)) / 2 + spacing;
+    const nSweep = Math.ceil((2 * halfExt) / spacing);
+    const stepS = Math.max(CW / 1400, spacing / 4);
 
-    const flush = (): void => {
-      if (top.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(top[0][0], top[0][1]);
-        for (let i = 1; i < top.length; i++) ctx.lineTo(top[i][0], top[i][1]);
-        for (let i = bot.length - 1; i >= 0; i--) ctx.lineTo(bot[i][0], bot[i][1]);
-        ctx.closePath();
-        ctx.fill();
-      }
-      top = [];
-      bot = [];
-    };
+    for (let li = 0; li < nSweep; li++) {
+      const c0 = -halfExt + spacing * (li + 0.5);
+      let e1: Array<[number, number]> = [];
+      let e2: Array<[number, number]> = [];
 
-    for (let x = areaX0; x <= areaX1; x += stepX) {
-      // coords normalizadas (independientes de la resolución de salida)
-      const xN = (x / CW) * 1200;
-      const yN = (y0 / CH) * 900;
-
-      // relieve: warp vertical por luminancia difuminada — sigue el volumen
-      const uB = (x - ox) / drawW;
-      const vB = (y0 - oy) / drawH;
-      const blurL = uB >= 0 && uB <= 1 && vB >= 0 && vB <= 1
-        ? sampleBilinear(grid.blur, grid.sw, grid.sh, uB, vB)
-        : 0.5; // fuera de la foto: sin relieve
-      const relief = (blurL - 0.5) * -reliefAmt; // claro = arriba, oscuro = abajo
-
-      // deriva del campo (corriente)
-      const drift = driftAmp > 0.001
-        ? flow.fbm(xN * 0.004 + tx, yN * 0.004 + ty, 2) * driftAmp
-        : 0;
-
-      const cyBase = y0 + (x - CW / 2) * tilt + relief + drift;
-
-      // tono muestreado donde la línea realmente pasa
-      const u = (x - ox) / drawW;
-      const v = (cyBase - oy) / drawH;
-      let dark = 0;
-      if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
-        dark = tone(sampleBilinear(grid.lum, grid.sw, grid.sh, u, v));
-      }
-
-      const taper = taperAt(x, cyBase);
-      const amp = maxAmp * dark * taper;
-      const cy = cyBase + wave(x - ox) * amp;
-
-      // anchura AM: espaciado constante, grosor variable, canal blanco garantizado
-      let half = caladoK * (0.10 + 0.90 * dark) * spacing * 0.48;
-      half = Math.min(half, spacing * 0.44);
-      half *= smoothstep(0.030, 0.10, dark) * (0.35 + 0.65 * taper); // dropout en luces
-
-      if (half < 0.12) { flush(); continue; }
-      top.push([x, cy - half]);
-      bot.push([x, cy + half]);
-    }
-    flush();
-  }
-
-  // ---------- trama cruzada (vertical, sólo sombras profundas) ----------
-  if (p.retratoCruzada) {
-    const nCols = Math.round((areaX1 - areaX0) / spacing);
-    const stepY = Math.max(CH / 1400, spacing / 4);
-    for (let ci = 0; ci < nCols; ci++) {
-      const x0 = areaX0 + spacing * (ci + 0.5);
-      let left: Array<[number, number]> = [];
-      let right: Array<[number, number]> = [];
       const flush = (): void => {
-        if (left.length > 1) {
+        if (e1.length > 1) {
           ctx.beginPath();
-          ctx.moveTo(left[0][0], left[0][1]);
-          for (let i = 1; i < left.length; i++) ctx.lineTo(left[i][0], left[i][1]);
-          for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i][0], right[i][1]);
+          ctx.moveTo(e1[0][0], e1[0][1]);
+          for (let i = 1; i < e1.length; i++) ctx.lineTo(e1[i][0], e1[i][1]);
+          for (let i = e2.length - 1; i >= 0; i--) ctx.lineTo(e2[i][0], e2[i][1]);
           ctx.closePath();
           ctx.fill();
         }
-        left = [];
-        right = [];
+        e1 = [];
+        e2 = [];
       };
 
-      for (let y = areaY0; y <= areaY1; y += stepY) {
-        const xN = (x0 / CW) * 1200;
-        const yN = (y / CH) * 900;
-        const drift = driftAmp > 0.001
-          ? flow.fbm(yN * 0.004 + 31.7 + tx, xN * 0.004 + ty, 2) * driftAmp * 0.7
-          : 0;
-        const cxBase = x0 + drift;
+      for (let s = -halfLen; s <= halfLen; s += stepS) {
+        const bx = ccx + ux * s + nvx * c0;
+        const by = ccy + uy * s + nvy * c0;
 
-        const u = (cxBase - ox) / drawW;
-        const v = (y - oy) / drawH;
+        // fuera del área de barrido: corta y sigue
+        if (bx < areaX0 || bx > areaX1 || by < areaY0 || by > areaY1) { flush(); continue; }
+
+        // coords normalizadas (independientes de la resolución de salida)
+        const xN = (bx / CW) * 1200;
+        const yN = (by / CH) * 900;
+
+        // relieve: warp por luminancia difuminada — sigue el volumen
+        const uB = (bx - ox) / drawW;
+        const vB = (by - oy) / drawH;
+        const blurL = uB >= 0 && uB <= 1 && vB >= 0 && vB <= 1
+          ? sampleBilinear(grid.blur, grid.sw, grid.sh, uB, vB)
+          : 0.5; // fuera de la foto: sin relieve
+        const relief = (blurL - 0.5) * -reliefAmt;
+
+        // deriva del campo (corriente)
+        const drift = driftAmp > 0.001
+          ? flow.fbm(xN * 0.004 + noiseOff + tx, yN * 0.004 + ty, 2) * driftAmp
+          : 0;
+
+        const off0 = relief + drift;
+
+        // tono muestreado donde la línea realmente pasa (desplazada por el warp)
+        const sx = bx + nvx * off0;
+        const sy = by + nvy * off0;
+        const u = (sx - ox) / drawW;
+        const v = (sy - oy) / drawH;
         let dark = 0;
         if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
           dark = tone(sampleBilinear(grid.lum, grid.sw, grid.sh, u, v));
         }
-        // sólo aparece en sombra profunda
-        const shadow = smoothstep(0.55, 0.9, dark);
-        const taper = taperAt(cxBase, y);
-        let half = caladoK * spacing * 0.30 * shadow * taper;
-        half = Math.min(half, spacing * 0.34);
 
+        const taper = taperAt(sx, sy);
+        const amp = withWave ? maxAmp * dark * taper : 0;
+        const off = off0 + (withWave ? wave(s + halfLen) * amp : 0);
+        const px = bx + nvx * off;
+        const py = by + nvy * off;
+
+        const half = getHalf(dark, taper);
         if (half < 0.12) { flush(); continue; }
-        left.push([cxBase - half, y]);
-        right.push([cxBase + half, y]);
+        e1.push([px + nvx * half, py + nvy * half]);
+        e2.push([px - nvx * half, py - nvy * half]);
       }
       flush();
     }
+  };
+
+  const theta = (p.curso * Math.PI) / 180;
+
+  // ---------- trama principal (dirección CURSO) ----------
+  sweep(theta, 0, true, (dark, taper) => {
+    // anchura AM: espaciado constante, grosor variable, canal blanco garantizado
+    let half = caladoK * (0.10 + 0.90 * dark) * spacing * 0.48;
+    half = Math.min(half, spacing * 0.44);
+    half *= smoothstep(0.030, 0.10, dark) * (0.35 + 0.65 * taper); // dropout en luces
+    return half;
+  });
+
+  // ---------- trama cruzada (perpendicular, sólo sombras profundas) ----------
+  if (p.retratoCruzada) {
+    sweep(theta + Math.PI / 2, 31.7, false, (dark, taper) => {
+      const shadow = smoothstep(0.55, 0.9, dark);
+      return Math.min(caladoK * spacing * 0.30 * shadow * taper, spacing * 0.34);
+    });
   }
 }
 

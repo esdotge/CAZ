@@ -379,6 +379,24 @@ function buildPanel(): void {
 
     const loadBtn = el('button', 'chip', 'CARGAR IMAGEN') as HTMLButtonElement;
     loadBtn.addEventListener('click', () => fileInput.click());
+
+    // AJUSTE: cubrir el lienzo (recorta) o foto entera (deja aire)
+    const fitCtrl = el('div', 'ctrl');
+    fitCtrl.appendChild(el('div', 'ctrl-head', '<span class="ctrl-name">AJUSTE</span>'));
+    const fitWrap = el('div', 'seg');
+    ([['cubrir', 'CUBRIR LIENZO'], ['entera', 'FOTO ENTERA']] as ['cubrir' | 'entera', string][]).forEach(([kind, label]) => {
+      const b = el('button', params.retratoFit === kind ? 'active' : '', label) as HTMLButtonElement;
+      b.addEventListener('click', () => {
+        params.retratoFit = kind;
+        fitWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        refreshJSON(); render();
+      });
+      fitWrap.appendChild(b);
+    });
+    fitCtrl.appendChild(fitWrap);
+    fitCtrl.appendChild(el('div', 'ctrl-desc', 'CUBRIR llena el lienzo sin dejar aire (recorta la foto)'));
+
     const cruzToggle = makeToggle('TRAMA CRUZADA (SOMBRAS)', params.retratoCruzada, (on) => {
       params.retratoCruzada = on; refreshJSON(); render();
     });
@@ -387,10 +405,11 @@ function buildPanel(): void {
     });
     panel.appendChild(group('Retrato (foto → grabado)', [
       trazoWrap,
+      fitCtrl,
       slider('retratoZoom'),
       slider('retratoRelieve'), slider('retratoExposicion'), slider('retratoContraste'),
       cruzToggle, invToggle, loadBtn,
-      el('div', 'hint-inline', 'Arrastra una foto al lienzo. Con la foto cargada, arrastra sobre el lienzo para encuadrarla (ENCUADRE la escala). CAUDAL fija la densidad, CALADO el grosor, MAREA la onda y CORRIENTE la deriva.'),
+      el('div', 'hint-inline', 'Arrastra una foto al lienzo y muévela arrastrando sobre él (ENCUADRE la escala). CURSO inclina la trama — cubre todo el lienzo a cualquier ángulo. ORILLAS a 0 sangra hasta el borde.'),
     ]));
   }
 

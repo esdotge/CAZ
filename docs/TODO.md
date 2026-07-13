@@ -24,6 +24,10 @@ Documentado, no construido (spec §7). Candidatos para v1+:
   tamaño; PNG a ×1/×2/×4 del lienzo.
 - **Encuadre en RETRATO**: ENCUADRE (zoom 1–4×) + arrastre sobre el lienzo para
   recortar/recolocar la foto.
+- **AJUSTE cubrir/entera** (cubrir por defecto: llena el lienzo sin aire, sin
+  margen mínimo forzado; ORILLAS 0 = sangrado al borde) y **barrido rotado**:
+  CURSO cubre todo el lienzo a cualquier ángulo (antes las diagonales dejaban
+  esquinas vacías); la trama cruzada gira con él (perpendicular).
 
 ## Notas de implementación pendientes
 

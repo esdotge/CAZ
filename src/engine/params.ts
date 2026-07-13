@@ -37,10 +37,13 @@ export interface TornoParams {
   retratoExposicion: number; // -100..100, brillo global de la foto
   retratoContraste: number;  // 0–100, refuerza la lectura de grabado
   retratoInvert: boolean;    // invierte oscuro/claro
-  retratoZoom: number;       // 1–4, escala de la foto (recorte/encuadre)
+  retratoFit: FitKind;       // cubrir = llenar el lienzo (recorta); entera = foto completa
+  retratoZoom: number;       // 1–4, escala extra sobre el ajuste (recorte/encuadre)
   retratoOffX: number;       // -1..1, desplazamiento horizontal del encuadre
   retratoOffY: number;       // -1..1, desplazamiento vertical del encuadre
 }
+
+export type FitKind = 'cubrir' | 'entera';
 
 export type TrazoKind = 'onda' | 'zigzag' | 'recta';
 
@@ -78,6 +81,7 @@ export const DEFAULTS: TornoParams = {
   retratoExposicion: 0,
   retratoContraste: 50,
   retratoInvert: false,
+  retratoFit: 'cubrir',
   retratoZoom: 1,
   retratoOffX: 0,
   retratoOffY: 0,
@@ -186,6 +190,7 @@ export function coerceParams(input: unknown): TornoParams {
   if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;
   if (o.lienzo === '1080x1080' || o.lienzo === '1920x1080' || o.lienzo === '1080x1920' || o.lienzo === '1080x1440') p.lienzo = o.lienzo;
   if (o.retratoTrazo === 'onda' || o.retratoTrazo === 'zigzag' || o.retratoTrazo === 'recta') p.retratoTrazo = o.retratoTrazo;
+  if (o.retratoFit === 'cubrir' || o.retratoFit === 'entera') p.retratoFit = o.retratoFit;
   if (typeof o.retratoCruzada === 'boolean') p.retratoCruzada = o.retratoCruzada;
   if (typeof o.retratoInvert === 'boolean') p.retratoInvert = o.retratoInvert;
   return p;
