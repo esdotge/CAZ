@@ -48,6 +48,7 @@ export function renderPortrait(canvas: HTMLCanvasElement, img: HTMLImageElement,
 
   const orillasBand = (p.orillas / 100) * Math.min(CW, CH);
   const contrastFactor = 1 + p.retratoContraste / 50; // 1..3
+  const exposure = p.retratoExposicion / 100 * 0.6;    // -0.6..0.6 sobre la luminancia
 
   const lumAt = (cx: number, cy: number): number => {
     // cx,cy en coords de lienzo → coords de imagen dibujada → muestreo.
@@ -59,7 +60,8 @@ export function renderPortrait(canvas: HTMLCanvasElement, img: HTMLImageElement,
     const idx = (sy * sw + sx) * 4;
     const r = data[idx], g = data[idx + 1], b = data[idx + 2];
     let L = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    L = 0.5 + (L - 0.5) * contrastFactor;
+    L += exposure;                          // exposición: sube/baja el brillo global
+    L = 0.5 + (L - 0.5) * contrastFactor;   // contraste alrededor del gris medio
     return Math.min(1, Math.max(0, L));
   };
 

@@ -28,8 +28,9 @@ export interface TornoParams {
   formaPath: string;  // path SVG pegado por el usuario (si forma === 'custom')
 
   // --- modo RETRATO ---
-  retratoContraste: number; // 0–100, refuerza la lectura de grabado
-  retratoInvert: boolean;   // invierte oscuro/claro
+  retratoExposicion: number; // -100..100, brillo global de la foto
+  retratoContraste: number;  // 0–100, refuerza la lectura de grabado
+  retratoInvert: boolean;    // invierte oscuro/claro
 }
 
 export type ShapeKind = 'circulo' | 'pildora' | 'o-cauce' | 'custom';
@@ -48,6 +49,7 @@ export const DEFAULTS: TornoParams = {
   vivo: false,
   forma: 'o-cauce',
   formaPath: '',
+  retratoExposicion: 0,
   retratoContraste: 50,
   retratoInvert: false,
 };
@@ -105,7 +107,8 @@ export const RANGES: Record<string, Range> = {
   marea:     { min: 0,    max: 100, step: 1,    unit: '' },
   orillas:   { min: 0,    max: 20,  step: 0.5,  unit: '%' },
   deriva:    { min: 0,    max: 15,  step: 0.5,  unit: '°' },
-  retratoContraste: { min: 0, max: 100, step: 1, unit: '' },
+  retratoExposicion: { min: -100, max: 100, step: 1, unit: '' },
+  retratoContraste:  { min: 0,   max: 100, step: 1, unit: '' },
 };
 
 /** Colores de tinta/fondo según colorway. */
@@ -137,6 +140,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('marea', RANGES.marea);
   num('orillas', RANGES.orillas);
   num('deriva', RANGES.deriva);
+  num('retratoExposicion', RANGES.retratoExposicion);
   num('retratoContraste', RANGES.retratoContraste);
   if (typeof o.semilla === 'number' && Number.isFinite(o.semilla)) p.semilla = Math.floor(o.semilla) >>> 0;
   if (o.colorway === 'tinta/papel' || o.colorway === 'agua/papel' || o.colorway === 'papel/agua') p.colorway = o.colorway;

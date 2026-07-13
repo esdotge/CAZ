@@ -63,6 +63,13 @@ export class FlowEngine {
     // Paso de muestreo: más fino con más marea/corriente.
     const du = Math.max(3.5, 7 - (p.corriente / 100) * 3);
 
+    // Animación en bucle sin costura: `time` es una fase 0..1 que traza un
+    // círculo en el espacio de ruido → el fotograma final coincide con el
+    // inicial. Radio pequeño para que la corriente respire, no salte.
+    const driftR = 0.34;
+    const tx = Math.cos(2 * Math.PI * time) * driftR;
+    const ty = Math.sin(2 * Math.PI * time) * driftR;
+
     for (let i = 0; i < n; i++) {
       const s = n === 1 ? 0 : (i / (n - 1)) * 2 - 1; // [-1, 1]
       const vBase = Math.sign(s) * Math.pow(Math.abs(s), k) * R;
@@ -84,7 +91,7 @@ export class FlowEngine {
 
         const flowMag =
           fieldAmp *
-          this.flow.fbm(u * ff + 11.1, v0 * ff * 0.6 + time, octaves) *
+          this.flow.fbm(u * ff + 11.1 + tx, v0 * ff * 0.6 + ty, octaves) *
           taper;
         const v = v0 + flowMag;
 
@@ -109,19 +116,6 @@ export class FlowEngine {
     const main = this.family(p, 0, time);
     const moire = p.deriva > 0.01 ? this.family(p, p.deriva, time) : [];
     return { main, moire };
-  }
-
-  /**
-   * Desplazamiento del campo en un punto de lienzo — reutilizado por RETRATO
-   * para que la foto "fluya" con la misma corriente que el patrón.
-   * Devuelve un ángulo de dirección local (radianes).
-   */
-  flowAngle(x: number, y: number, p: TornoParams, time = 0): number {
-    const base = (p.curso * Math.PI) / 180;
-    const ff = 0.0011 + (p.corriente / 100) * 0.0042;
-    const octaves = p.corriente > 55 ? 3 : 2;
-    const wobble = this.flow.fbm(x * ff, y * ff + time, octaves) * (p.marea / 100) * 0.9;
-    return base + wobble;
   }
 }
 

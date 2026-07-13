@@ -6,7 +6,8 @@ import {
 import { FlowEngine, WIDTH, HEIGHT, lineToPath, type Line } from './engine/field';
 import { shapePath } from './engine/shape';
 import { renderPortrait } from './engine/portrait';
-import { exportSVG, exportPNG, presetJSON } from './engine/export';
+import { type FrameShape } from './engine/render-canvas';
+import { exportSVG, exportPNG, presetJSON, exportWebM, exportGIF, webmSupported } from './engine/export';
 
 // ---------------- estado ----------------
 let mode: Mode = 'patron';
@@ -38,19 +39,33 @@ function linesToSVG(lines: Line[], stroke: string, width: number, opacity = 1): 
   return `<g fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"${op}>${s}</g>`;
 }
 
-function fitTransform(customPath: string): string {
+function fitBBox(customPath: string): { tx: number; ty: number; s: number } | null {
   // Ajusta un path pegado al centro del lienzo (80% del área).
   const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   tmp.setAttribute('d', customPath);
   svg.appendChild(tmp);
   let bbox: DOMRect;
-  try { bbox = tmp.getBBox(); } catch { svg.removeChild(tmp); return ''; }
+  try { bbox = tmp.getBBox(); } catch { svg.removeChild(tmp); return null; }
   svg.removeChild(tmp);
-  if (!bbox.width || !bbox.height) return '';
-  const scale = Math.min((WIDTH * 0.8) / bbox.width, (HEIGHT * 0.8) / bbox.height);
-  const tx = WIDTH / 2 - (bbox.x + bbox.width / 2) * scale;
-  const ty = HEIGHT / 2 - (bbox.y + bbox.height / 2) * scale;
-  return `translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${scale.toFixed(4)})`;
+  if (!bbox.width || !bbox.height) return null;
+  const s = Math.min((WIDTH * 0.8) / bbox.width, (HEIGHT * 0.8) / bbox.height);
+  const tx = WIDTH / 2 - (bbox.x + bbox.width / 2) * s;
+  const ty = HEIGHT / 2 - (bbox.y + bbox.height / 2) * s;
+  return { tx, ty, s };
+}
+
+function fitTransform(customPath: string): string {
+  const f = fitBBox(customPath);
+  if (!f) return '';
+  return `translate(${f.tx.toFixed(2)} ${f.ty.toFixed(2)}) scale(${f.s.toFixed(4)})`;
+}
+
+/** Info de forma para el render a canvas (export de vídeo/GIF). */
+function currentShape(): FrameShape | undefined {
+  if (mode !== 'forma') return undefined;
+  const { d, fillRule } = shapePath(params.forma, params.formaPath);
+  const fit = params.forma === 'custom' && params.formaPath ? fitBBox(params.formaPath) : null;
+  return { d, fillRule, fit };
 }
 
 let animTime = 0;
@@ -98,7 +113,8 @@ function render(): void {
 
 // ---------------- animación (CORRIENTE VIVA) ----------------
 function tickAnim(): void {
-  animTime += 0.004 + (params.corriente / 100) * 0.02;
+  // fase en [0,1) → bucle sin costura (ver FlowEngine).
+  animTime = (animTime + 0.0015 + (params.corriente / 100) * 0.006) % 1;
   render();
   animHandle = requestAnimationFrame(tickAnim);
 }
@@ -131,6 +147,7 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   marea: { name: 'MAREA', desc: 'Amplitud de la ondulación' },
   orillas: { name: 'ORILLAS', desc: 'Zona de calma en los bordes' },
   deriva: { name: 'DERIVA', desc: '2ª trama para moiré (0 = sin moiré)' },
+  retratoExposicion: { name: 'EXPOSICIÓN', desc: 'Brillo global de la foto' },
   retratoContraste: { name: 'CONTRASTE', desc: 'Refuerza la lectura de grabado' },
 };
 
@@ -225,10 +242,28 @@ function buildPanel(): void {
     });
     cwWrap.appendChild(b);
   });
+  // Export de movimiento (WebM / GIF), sólo con CORRIENTE VIVA en PATRÓN/FORMA.
+  const motionRow = el('div', 'seg');
+  const webmBtn = el('button', '', 'VÍDEO WEBM') as HTMLButtonElement;
+  const gifBtn = el('button', '', 'GIF') as HTMLButtonElement;
+  const motionMsg = el('div', 'hint-inline', '');
+  const updateMotion = () => {
+    const ok = params.vivo && mode !== 'retrato';
+    webmBtn.disabled = !ok || !webmSupported();
+    gifBtn.disabled = !ok;
+    motionMsg.textContent = ok
+      ? 'Exporta el bucle (≈3 s, sin costura).'
+      : 'Activa CORRIENTE VIVA en PATRÓN o FORMA para exportar movimiento.';
+  };
+  webmBtn.addEventListener('click', () => runMotionExport('webm', webmBtn, updateMotion));
+  gifBtn.addEventListener('click', () => runMotionExport('gif', gifBtn, updateMotion));
+  motionRow.appendChild(webmBtn); motionRow.appendChild(gifBtn);
+
   const vivoToggle = makeToggle('CORRIENTE VIVA', params.vivo, (on) => {
-    params.vivo = on; refreshJSON(); syncAnim();
+    params.vivo = on; refreshJSON(); syncAnim(); updateMotion();
   });
-  panel.appendChild(group('Color · animación', [cwWrap, vivoToggle]));
+  updateMotion();
+  panel.appendChild(group('Color · animación', [cwWrap, vivoToggle, motionRow, motionMsg]));
 
   // FORMA (solo modo forma)
   if (mode === 'forma') {
@@ -267,7 +302,7 @@ function buildPanel(): void {
       params.retratoInvert = on; refreshJSON(); render();
     });
     panel.appendChild(group('Retrato (foto → grabado)', [
-      slider('retratoContraste'), invToggle, loadBtn,
+      slider('retratoExposicion'), slider('retratoContraste'), invToggle, loadBtn,
       el('div', 'hint-inline', 'Arrastra una foto al lienzo. Los controles de FLUJO y LÍNEA también afectan al grabado.'),
     ]));
   }
@@ -306,6 +341,26 @@ function makeToggle(label: string, on: boolean, onChange: (on: boolean) => void)
 }
 
 // ---------------- acciones ----------------
+let motionBusy = false;
+async function runMotionExport(kind: 'webm' | 'gif', btn: HTMLButtonElement, done: () => void): Promise<void> {
+  if (motionBusy || !params.vivo || mode === 'retrato') return;
+  motionBusy = true;
+  const label = btn.textContent ?? '';
+  btn.disabled = true;
+  const onProgress = (pr: number) => { btn.textContent = kind.toUpperCase() + ' ' + Math.round(pr * 100) + '%'; };
+  const shape = currentShape();
+  try {
+    if (kind === 'webm') await exportWebM(params, mode, engine, shape, { onProgress });
+    else await exportGIF(params, mode, engine, shape, { onProgress });
+  } catch (e) {
+    alert('No se pudo exportar: ' + (e as Error).message);
+  } finally {
+    motionBusy = false;
+    btn.textContent = label;
+    done();
+  }
+}
+
 function applyPreset(nombre: string): void {
   const pr = PRESETS.find((x) => x.nombre === nombre);
   if (!pr) return;
