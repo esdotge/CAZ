@@ -1,9 +1,9 @@
 {
-  "name": "caz-torno",
+  "name": "caz",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "TORNO — motor generativo de la identidad CAUCE. Guilloché reinterpretado como línea de canal.",
+  "description": "CAZ — motor generativo de la identidad CAUCE. Guilloché reinterpretado como línea de canal.",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

@@ -1,6 +1,5 @@
-import { WIDTH, HEIGHT, type FlowEngine } from './field';
+import { WIDTH, HEIGHT } from './field';
 import { inkPaper, type Mode, type TornoParams } from './params';
-import { drawPatternFrame, type FrameShape } from './render-canvas';
 import { encodeGIF, duotoneRamp, type GifFrame } from './gif';
 
 function download(blob: Blob, filename: string): void {
@@ -41,7 +40,7 @@ export function svgString(svgEl: SVGSVGElement, p: TornoParams): string {
 
 export function exportSVG(svgEl: SVGSVGElement, p: TornoParams, mode: Mode): void {
   const str = svgString(svgEl, p);
-  download(new Blob([str], { type: 'image/svg+xml;charset=utf-8' }), `torno-${mode}-${p.semilla}-${stamp()}.svg`);
+  download(new Blob([str], { type: 'image/svg+xml;charset=utf-8' }), `caz-${mode}-${p.semilla}-${stamp()}.svg`);
 }
 
 /** PNG @2x. Para patrón/forma rasteriza el SVG; para retrato usa el canvas. */
@@ -56,7 +55,7 @@ export async function exportPNG(
 
   if (mode === 'retrato') {
     canvasEl.toBlob((blob) => {
-      if (blob) download(blob, `torno-retrato-${p.semilla}-${stamp()}.png`);
+      if (blob) download(blob, `caz-retrato-${p.semilla}-${stamp()}.png`);
     }, 'image/png');
     return;
   }
@@ -73,7 +72,7 @@ export async function exportPNG(
     ctx.drawImage(img, 0, 0, W2, H2);
     await new Promise<void>((resolve) => {
       c.toBlob((blob) => {
-        if (blob) download(blob, `torno-${mode}-${p.semilla}-${stamp()}.png`);
+        if (blob) download(blob, `caz-${mode}-${p.semilla}-${stamp()}.png`);
         resolve();
       }, 'image/png');
     });
@@ -93,10 +92,20 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 /** Receta versionable: todos los parámetros + semilla + modo. */
 export function presetJSON(p: TornoParams, mode: Mode): string {
-  return JSON.stringify({ _torno: 'v0', mode, ...p }, null, 2);
+  return JSON.stringify({ _caz: 'v0', mode, ...p }, null, 2);
 }
 
 // ------------------- export de CORRIENTE VIVA -------------------
+
+/**
+ * Fuente de fotogramas genérica: cualquier modo (patrón, forma o retrato)
+ * que sepa dibujarse en un canvas a una fase dada puede exportar movimiento.
+ */
+export interface MotionSource {
+  draw: (ctx: CanvasRenderingContext2D, W: number, H: number, phase: number) => void;
+  ink: string;
+  paper: string;
+}
 
 export interface MotionOpts {
   segundos?: number;
@@ -120,7 +129,7 @@ export function webmSupported(): boolean {
 
 /** Graba un bucle sin costura de CORRIENTE VIVA a WebM (en tiempo real). */
 export async function exportWebM(
-  p: TornoParams, mode: Mode, engine: FlowEngine, shape: FrameShape | undefined, opts: MotionOpts = {},
+  p: TornoParams, mode: Mode, src: MotionSource, opts: MotionOpts = {},
 ): Promise<void> {
   const W = opts.ancho ?? WIDTH;
   const H = Math.round((W * HEIGHT) / WIDTH);
@@ -133,7 +142,7 @@ export async function exportWebM(
   canvas.style.cssText = 'position:fixed;left:-99999px;top:0;opacity:0;pointer-events:none';
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d')!;
-  drawPatternFrame(ctx, W, H, p, engine, 0, shape);
+  src.draw(ctx, W, H, 0);
 
   // captureStream(0) = manual: cada fotograma se empuja con requestFrame(),
   // sin depender del reloj del compositor (rAF puede pararse en segundo plano).
@@ -151,7 +160,7 @@ export async function exportWebM(
   try {
     for (let i = 0; i < total; i++) {
       const phase = i / total; // un bucle completo a lo largo de la duración
-      drawPatternFrame(ctx, W, H, p, engine, phase, shape);
+      src.draw(ctx, W, H, phase);
       if (typeof track.requestFrame === 'function') track.requestFrame();
       opts.onProgress?.((i + 1) / total);
       await new Promise((r) => setTimeout(r, frameMs));
@@ -161,12 +170,12 @@ export async function exportWebM(
     await stopped;
     canvas.remove();
   }
-  download(new Blob(chunks, { type: mime }), `torno-${mode}-vivo-${p.semilla}-${stamp()}.webm`);
+  download(new Blob(chunks, { type: mime }), `caz-${mode}-vivo-${p.semilla}-${stamp()}.webm`);
 }
 
 /** Renderiza un bucle sin costura de CORRIENTE VIVA a GIF animado. */
 export async function exportGIF(
-  p: TornoParams, mode: Mode, engine: FlowEngine, shape: FrameShape | undefined, opts: MotionOpts = {},
+  p: TornoParams, mode: Mode, src: MotionSource, opts: MotionOpts = {},
 ): Promise<void> {
   const W = opts.ancho ?? 560;
   const H = Math.round((W * HEIGHT) / WIDTH);
@@ -178,13 +187,12 @@ export async function exportGIF(
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
 
-  const { ink, paper } = inkPaper(p.colorway);
-  const { palette, quantize } = duotoneRamp(ink, paper, 16);
+  const { palette, quantize } = duotoneRamp(src.ink, src.paper, 16);
 
   const frames: GifFrame[] = [];
   for (let i = 0; i < nFrames; i++) {
     const phase = i / nFrames;
-    drawPatternFrame(ctx, W, H, p, engine, phase, shape);
+    src.draw(ctx, W, H, phase);
     const img = ctx.getImageData(0, 0, W, H).data;
     const idx = new Uint8Array(W * H);
     for (let src = 0, j = 0; src < img.length; src += 4, j++) {
@@ -195,6 +203,6 @@ export async function exportGIF(
     if (i % 4 === 3) await new Promise((r) => setTimeout(r, 0)); // cede el hilo
   }
 
-  const blob = encodeGIF(W, H, palette, frames);
-  download(blob, `torno-${mode}-vivo-${p.semilla}-${stamp()}.gif`);
+  const blob = await encodeGIF(W, H, palette, frames);
+  download(blob, `caz-${mode}-vivo-${p.semilla}-${stamp()}.gif`);
 }

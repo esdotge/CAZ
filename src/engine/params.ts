@@ -28,10 +28,15 @@ export interface TornoParams {
   formaPath: string;  // path SVG pegado por el usuario (si forma === 'custom')
 
   // --- modo RETRATO ---
+  retratoTrazo: TrazoKind;   // forma de la línea de grabado
+  retratoRelieve: number;    // 0–100, warp por volumen: las líneas se abomban
+  retratoCruzada: boolean;   // 2ª trama cruzada en sombras profundas
   retratoExposicion: number; // -100..100, brillo global de la foto
   retratoContraste: number;  // 0–100, refuerza la lectura de grabado
   retratoInvert: boolean;    // invierte oscuro/claro
 }
+
+export type TrazoKind = 'onda' | 'zigzag' | 'recta';
 
 export type ShapeKind = 'circulo' | 'pildora' | 'o-cauce' | 'custom';
 
@@ -49,6 +54,9 @@ export const DEFAULTS: TornoParams = {
   vivo: false,
   forma: 'o-cauce',
   formaPath: '',
+  retratoTrazo: 'onda',
+  retratoRelieve: 40,
+  retratoCruzada: false,
   retratoExposicion: 0,
   retratoContraste: 50,
   retratoInvert: false,
@@ -107,6 +115,7 @@ export const RANGES: Record<string, Range> = {
   marea:     { min: 0,    max: 100, step: 1,    unit: '' },
   orillas:   { min: 0,    max: 20,  step: 0.5,  unit: '%' },
   deriva:    { min: 0,    max: 15,  step: 0.5,  unit: '°' },
+  retratoRelieve:    { min: 0,    max: 100, step: 1, unit: '' },
   retratoExposicion: { min: -100, max: 100, step: 1, unit: '' },
   retratoContraste:  { min: 0,   max: 100, step: 1, unit: '' },
 };
@@ -140,6 +149,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('marea', RANGES.marea);
   num('orillas', RANGES.orillas);
   num('deriva', RANGES.deriva);
+  num('retratoRelieve', RANGES.retratoRelieve);
   num('retratoExposicion', RANGES.retratoExposicion);
   num('retratoContraste', RANGES.retratoContraste);
   if (typeof o.semilla === 'number' && Number.isFinite(o.semilla)) p.semilla = Math.floor(o.semilla) >>> 0;
@@ -147,6 +157,8 @@ export function coerceParams(input: unknown): TornoParams {
   if (o.forma === 'circulo' || o.forma === 'pildora' || o.forma === 'o-cauce' || o.forma === 'custom') p.forma = o.forma;
   if (typeof o.formaPath === 'string') p.formaPath = o.formaPath;
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;
+  if (o.retratoTrazo === 'onda' || o.retratoTrazo === 'zigzag' || o.retratoTrazo === 'recta') p.retratoTrazo = o.retratoTrazo;
+  if (typeof o.retratoCruzada === 'boolean') p.retratoCruzada = o.retratoCruzada;
   if (typeof o.retratoInvert === 'boolean') p.retratoInvert = o.retratoInvert;
   return p;
 }

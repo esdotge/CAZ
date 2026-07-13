@@ -11,10 +11,15 @@ Documentado, no construido (spec §7). Candidatos para v1+:
 
 ## Hecho después de v0
 
-- **Export de vídeo (WebM) y GIF** de CORRIENTE VIVA, con bucle sin costura.
-  El GIF usa un encoder GIF89a propio (paleta duotono); el WebM graba en tiempo
-  real con `MediaRecorder` + `captureStream`.
+- **Export de vídeo (WebM) y GIF** de CORRIENTE VIVA, con bucle sin costura —
+  en los tres modos, RETRATO incluido. El GIF usa un encoder GIF89a propio
+  (paleta duotono); el WebM graba en tiempo real con `MediaRecorder`.
 - **EXPOSICIÓN y CONTRASTE** de la foto en RETRATO.
+- **Motor de RETRATO v2** (referencias: grabado de billete + halftoning AM por
+  líneas): tono por anchura a espaciado constante con canal blanco garantizado,
+  TRAZO onda/zigzag/recta, RELIEVE (warp de contorno por luminancia difuminada),
+  TRAMA CRUZADA en sombras, dropout en luces, animación con fase sin costura.
+- Renombrado TORNO → **CAZ**.
 
 ## Notas de implementación pendientes
 

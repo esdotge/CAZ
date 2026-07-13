@@ -72,10 +72,11 @@ export interface GifFrame {
 }
 
 /**
- * Ensambla un GIF89a animado en bucle infinito.
+ * Ensambla un GIF89a animado en bucle infinito. Asíncrono: cede el hilo entre
+ * fotogramas para no congelar la UI durante el LZW.
  * `palette`: array de [r,g,b], longitud potencia de 2 (2..256).
  */
-export function encodeGIF(w: number, h: number, palette: number[][], frames: GifFrame[]): Blob {
+export async function encodeGIF(w: number, h: number, palette: number[][], frames: GifFrame[]): Promise<Blob> {
   const out: number[] = [];
   const push = (...b: number[]) => out.push(...b);
   const pushStr = (s: string) => { for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i)); };
@@ -124,6 +125,7 @@ export function encodeGIF(w: number, h: number, palette: number[][], frames: Gif
       push(chunk.length, ...chunk);
     }
     push(0x00); // fin de datos de imagen
+    await new Promise((r) => setTimeout(r, 0)); // cede el hilo
   }
 
   push(0x3b); // trailer

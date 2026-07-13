@@ -1,13 +1,16 @@
 import './style.css';
 import {
   DEFAULTS, PRESETS, RANGES, coerceParams, inkPaper,
-  type Colorway, type Mode, type ShapeKind, type TornoParams,
+  type Colorway, type Mode, type ShapeKind, type TornoParams, type TrazoKind,
 } from './engine/params';
 import { FlowEngine, WIDTH, HEIGHT, lineToPath, type Line } from './engine/field';
 import { shapePath } from './engine/shape';
-import { renderPortrait } from './engine/portrait';
-import { type FrameShape } from './engine/render-canvas';
-import { exportSVG, exportPNG, presetJSON, exportWebM, exportGIF, webmSupported } from './engine/export';
+import { renderPortrait, renderPortraitTo, portraitInk } from './engine/portrait';
+import { drawPatternFrame, type FrameShape } from './engine/render-canvas';
+import {
+  exportSVG, exportPNG, presetJSON, exportWebM, exportGIF, webmSupported,
+  type MotionSource,
+} from './engine/export';
 
 // ---------------- estado ----------------
 let mode: Mode = 'patron';
@@ -82,7 +85,7 @@ function render(): void {
   dropHint.classList.toggle('show', mode === 'retrato' && !portraitImg);
 
   if (mode === 'retrato') {
-    if (portraitImg) renderPortrait(canvas, portraitImg, params);
+    if (portraitImg) renderPortrait(canvas, portraitImg, params, animTime);
     else {
       const ctx = canvas.getContext('2d')!;
       ctx.fillStyle = paper;
@@ -102,12 +105,12 @@ function render(): void {
     // FORMA: patrón recortado dentro del contenedor.
     const { d, fillRule } = shapePath(params.forma, params.formaPath);
     const transform = params.forma === 'custom' && params.formaPath ? fitTransform(params.formaPath) : '';
-    const clip = `<defs><clipPath id="torno-clip" clip-rule="${fillRule}">` +
+    const clip = `<defs><clipPath id="caz-clip" clip-rule="${fillRule}">` +
       `<path d="${d}" clip-rule="${fillRule}"${transform ? ` transform="${transform}"` : ''}/></clipPath></defs>`;
     let content = '';
     if (moire.length) content += linesToSVG(moire, ink, params.calado, 0.5);
     content += linesToSVG(main, ink, params.calado);
-    svg.innerHTML = clip + `<g clip-path="url(#torno-clip)">${content}</g>`;
+    svg.innerHTML = clip + `<g clip-path="url(#caz-clip)">${content}</g>`;
   }
 }
 
@@ -119,7 +122,7 @@ function tickAnim(): void {
   animHandle = requestAnimationFrame(tickAnim);
 }
 function syncAnim(): void {
-  const shouldRun = params.vivo && mode !== 'retrato';
+  const shouldRun = params.vivo && (mode !== 'retrato' || !!portraitImg);
   if (shouldRun && !animHandle) {
     animHandle = requestAnimationFrame(tickAnim);
   } else if (!shouldRun && animHandle) {
@@ -147,6 +150,7 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   marea: { name: 'MAREA', desc: 'Amplitud de la ondulación' },
   orillas: { name: 'ORILLAS', desc: 'Zona de calma en los bordes' },
   deriva: { name: 'DERIVA', desc: '2ª trama para moiré (0 = sin moiré)' },
+  retratoRelieve: { name: 'RELIEVE', desc: 'Las líneas se abomban con el volumen' },
   retratoExposicion: { name: 'EXPOSICIÓN', desc: 'Brillo global de la foto' },
   retratoContraste: { name: 'CONTRASTE', desc: 'Refuerza la lectura de grabado' },
 };
@@ -248,12 +252,14 @@ function buildPanel(): void {
   const gifBtn = el('button', '', 'GIF') as HTMLButtonElement;
   const motionMsg = el('div', 'hint-inline', '');
   const updateMotion = () => {
-    const ok = params.vivo && mode !== 'retrato';
+    const ok = params.vivo && (mode !== 'retrato' || !!portraitImg);
     webmBtn.disabled = !ok || !webmSupported();
     gifBtn.disabled = !ok;
     motionMsg.textContent = ok
       ? 'Exporta el bucle (≈3 s, sin costura).'
-      : 'Activa CORRIENTE VIVA en PATRÓN o FORMA para exportar movimiento.';
+      : mode === 'retrato' && !portraitImg
+        ? 'Carga una imagen y activa CORRIENTE VIVA para exportar movimiento.'
+        : 'Activa CORRIENTE VIVA para exportar movimiento.';
   };
   webmBtn.addEventListener('click', () => runMotionExport('webm', webmBtn, updateMotion));
   gifBtn.addEventListener('click', () => runMotionExport('gif', gifBtn, updateMotion));
@@ -296,14 +302,32 @@ function buildPanel(): void {
 
   // RETRATO (solo modo retrato)
   if (mode === 'retrato') {
+    const trazoWrap = el('div', 'seg');
+    const trazos: [TrazoKind, string][] = [['onda', 'ONDA'], ['zigzag', 'ZIGZAG'], ['recta', 'RECTA']];
+    trazos.forEach(([k, label]) => {
+      const b = el('button', params.retratoTrazo === k ? 'active' : '', label) as HTMLButtonElement;
+      b.addEventListener('click', () => {
+        params.retratoTrazo = k;
+        trazoWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        refreshJSON(); render();
+      });
+      trazoWrap.appendChild(b);
+    });
+
     const loadBtn = el('button', 'chip', 'CARGAR IMAGEN') as HTMLButtonElement;
     loadBtn.addEventListener('click', () => fileInput.click());
+    const cruzToggle = makeToggle('TRAMA CRUZADA (SOMBRAS)', params.retratoCruzada, (on) => {
+      params.retratoCruzada = on; refreshJSON(); render();
+    });
     const invToggle = makeToggle('INVERTIR TONO', params.retratoInvert, (on) => {
       params.retratoInvert = on; refreshJSON(); render();
     });
     panel.appendChild(group('Retrato (foto → grabado)', [
-      slider('retratoExposicion'), slider('retratoContraste'), invToggle, loadBtn,
-      el('div', 'hint-inline', 'Arrastra una foto al lienzo. Los controles de FLUJO y LÍNEA también afectan al grabado.'),
+      trazoWrap,
+      slider('retratoRelieve'), slider('retratoExposicion'), slider('retratoContraste'),
+      cruzToggle, invToggle, loadBtn,
+      el('div', 'hint-inline', 'Arrastra una foto al lienzo. CAUDAL fija la densidad de líneas, CALADO el grosor, MAREA la onda y CORRIENTE la deriva del campo.'),
     ]));
   }
 
@@ -343,15 +367,31 @@ function makeToggle(label: string, on: boolean, onChange: (on: boolean) => void)
 // ---------------- acciones ----------------
 let motionBusy = false;
 async function runMotionExport(kind: 'webm' | 'gif', btn: HTMLButtonElement, done: () => void): Promise<void> {
-  if (motionBusy || !params.vivo || mode === 'retrato') return;
+  if (motionBusy || !params.vivo) return;
+  if (mode === 'retrato' && !portraitImg) return;
   motionBusy = true;
   const label = btn.textContent ?? '';
   btn.disabled = true;
   const onProgress = (pr: number) => { btn.textContent = kind.toUpperCase() + ' ' + Math.round(pr * 100) + '%'; };
-  const shape = currentShape();
+
+  let src: MotionSource;
+  if (mode === 'retrato') {
+    const img = portraitImg!;
+    src = {
+      draw: (ctx, W, H, phase) => renderPortraitTo(ctx, W, H, img, params, phase),
+      ...portraitInk(params),
+    };
+  } else {
+    const shape = currentShape();
+    src = {
+      draw: (ctx, W, H, phase) => drawPatternFrame(ctx, W, H, params, engine, phase, shape),
+      ...inkPaper(params.colorway),
+    };
+  }
+
   try {
-    if (kind === 'webm') await exportWebM(params, mode, engine, shape, { onProgress });
-    else await exportGIF(params, mode, engine, shape, { onProgress });
+    if (kind === 'webm') await exportWebM(params, mode, src, { onProgress });
+    else await exportGIF(params, mode, src, { onProgress });
   } catch (e) {
     alert('No se pudo exportar: ' + (e as Error).message);
   } finally {
@@ -406,7 +446,12 @@ function loadImageFile(file: File): void {
   const reader = new FileReader();
   reader.onload = () => {
     const img = new Image();
-    img.onload = () => { portraitImg = img; if (mode !== 'retrato') setMode('retrato'); else render(); };
+    img.onload = () => {
+      portraitImg = img;
+      if (mode !== 'retrato') setMode('retrato');
+      else { buildPanel(); render(); }
+      syncAnim();
+    };
     img.src = reader.result as string;
   };
   reader.readAsDataURL(file);
