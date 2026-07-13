@@ -128,8 +128,10 @@ function render(): void {
 
 // ---------------- animación (CORRIENTE VIVA) ----------------
 function tickAnim(): void {
-  // fase en [0,1) → bucle sin costura (ver FlowEngine).
-  animTime = (animTime + 0.0015 + (params.corriente / 100) * 0.006) % 1;
+  const inc = 0.0015 + (params.corriente / 100) * 0.006;
+  // Con LOOP PERFECTO la fase envuelve en [0,1) (círculo en el ruido);
+  // sin loop crece libre — la corriente nunca vuelve sobre sí misma.
+  animTime = params.motionLoop ? (animTime + inc) % 1 : animTime + inc;
   render();
   animHandle = requestAnimationFrame(tickAnim);
 }
@@ -267,7 +269,7 @@ function buildPanel(): void {
   seedRow.appendChild(seedInput); seedRow.appendChild(dice);
   panel.appendChild(group('Semilla', [seedRow]));
 
-  // COLOR + VIVO
+  // COLOR
   const cwWrap = el('div', 'seg');
   const cws: Colorway[] = ['tinta/papel', 'agua/papel', 'papel/agua'];
   cws.forEach((cw) => {
@@ -280,30 +282,56 @@ function buildPanel(): void {
     });
     cwWrap.appendChild(b);
   });
-  // Export de movimiento (WebM / GIF), sólo con CORRIENTE VIVA en PATRÓN/FORMA.
+  panel.appendChild(group('Color', [cwWrap]));
+
+  // MOVIMIENTO — animación en vivo + export de bucle
   const motionRow = el('div', 'seg');
   const webmBtn = el('button', '', 'VÍDEO WEBM') as HTMLButtonElement;
   const gifBtn = el('button', '', 'GIF') as HTMLButtonElement;
   const motionMsg = el('div', 'hint-inline', '');
-  const updateMotion = () => {
+
+  // DURACIÓN del bucle exportado
+  const durCtrl = el('div', 'ctrl');
+  durCtrl.appendChild(el('div', 'ctrl-head',
+    `<span class="ctrl-name">DURACIÓN</span><span class="ctrl-val">${params.motionSegundos}s</span>`));
+  const durWrap = el('div', 'seg');
+  const durVal = durCtrl.querySelector('.ctrl-val') as HTMLElement;
+  [2, 3, 5, 10].forEach((s) => {
+    const b = el('button', params.motionSegundos === s ? 'active' : '', `${s}s`) as HTMLButtonElement;
+    b.addEventListener('click', () => {
+      params.motionSegundos = s;
+      durVal.textContent = `${s}s`;
+      durWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      refreshJSON(); updateMotion();
+    });
+    durWrap.appendChild(b);
+  });
+  durCtrl.appendChild(durWrap);
+  durCtrl.appendChild(el('div', 'ctrl-desc', 'Duración del vídeo o GIF exportado'));
+
+  const updateMotion = (): void => {
     const ok = params.vivo && (mode !== 'retrato' || !!portraitImg);
     webmBtn.disabled = !ok || !webmSupported();
     gifBtn.disabled = !ok;
     motionMsg.textContent = ok
-      ? 'Exporta el bucle (≈3 s, sin costura).'
+      ? `Bucle de ${params.motionSegundos} s · ${params.motionLoop ? 'empieza y acaba igual (loop perfecto)' : 'deriva libre, sin cierre de bucle'}.`
       : mode === 'retrato' && !portraitImg
-        ? 'Carga una imagen y activa CORRIENTE VIVA para exportar movimiento.'
-        : 'Activa CORRIENTE VIVA para exportar movimiento.';
+        ? 'Carga una imagen y activa MOVIMIENTO para exportar vídeo o GIF.'
+        : 'Activa MOVIMIENTO para exportar vídeo o GIF.';
   };
   webmBtn.addEventListener('click', () => runMotionExport('webm', webmBtn, updateMotion));
   gifBtn.addEventListener('click', () => runMotionExport('gif', gifBtn, updateMotion));
   motionRow.appendChild(webmBtn); motionRow.appendChild(gifBtn);
 
-  const vivoToggle = makeToggle('CORRIENTE VIVA', params.vivo, (on) => {
+  const vivoToggle = makeToggle('MOVIMIENTO', params.vivo, (on) => {
     params.vivo = on; refreshJSON(); syncAnim(); updateMotion();
   });
+  const loopToggle = makeToggle('LOOP PERFECTO', params.motionLoop, (on) => {
+    params.motionLoop = on; refreshJSON(); updateMotion(); render();
+  });
   updateMotion();
-  panel.appendChild(group('Color · animación', [cwWrap, vivoToggle, motionRow, motionMsg]));
+  panel.appendChild(group('Movimiento', [vivoToggle, durCtrl, loopToggle, motionRow, motionMsg]));
 
   // FORMA (solo modo forma)
   if (mode === 'forma') {
@@ -390,7 +418,7 @@ function buildPanel(): void {
 
 function makeToggle(label: string, on: boolean, onChange: (on: boolean) => void): HTMLElement {
   const t = el('div', 'toggle' + (on ? ' on' : ''));
-  t.innerHTML = `<span class="box"></span><span>${label}</span>`;
+  t.innerHTML = `<span class="lbl">${label}</span><span class="tk"><span class="dot"></span></span>`;
   t.addEventListener('click', () => {
     const now = !t.classList.contains('on');
     t.classList.toggle('on', now);

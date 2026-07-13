@@ -61,12 +61,18 @@ export class FlowEngine {
     // Paso de muestreo: más fino con más marea/corriente.
     const du = Math.max(3.5, 7 - (p.corriente / 100) * 3);
 
-    // Animación en bucle sin costura: `time` es una fase 0..1 que traza un
-    // círculo en el espacio de ruido → el fotograma final coincide con el
-    // inicial. Radio pequeño para que la corriente respire, no salte.
+    // Animación: con LOOP PERFECTO la fase 0..1 traza un círculo en el espacio
+    // de ruido → el fotograma final coincide con el inicial. Sin loop, la
+    // corriente deriva libre (avance lineal, nunca vuelve al inicio).
     const driftR = 0.34;
-    const tx = Math.cos(2 * Math.PI * time) * driftR;
-    const ty = Math.sin(2 * Math.PI * time) * driftR;
+    let tx: number, ty: number;
+    if (p.motionLoop) {
+      tx = Math.cos(2 * Math.PI * time) * driftR;
+      ty = Math.sin(2 * Math.PI * time) * driftR;
+    } else {
+      tx = time * driftR * 2 * Math.PI;
+      ty = time * driftR * 2;
+    }
 
     for (let i = 0; i < n; i++) {
       const s = n === 1 ? 0 : (i / (n - 1)) * 2 - 1; // [-1, 1]

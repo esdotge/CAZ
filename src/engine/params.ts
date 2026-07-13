@@ -21,8 +21,10 @@ export interface TornoParams {
 
   // --- presentación ---
   colorway: Colorway;
-  vivo: boolean;      // CORRIENTE VIVA — animación (el campo se desplaza)
-  lienzo: LienzoKind; // tamaño del lienzo (px lógicos)
+  vivo: boolean;          // MOVIMIENTO — animación (el campo se desplaza)
+  motionSegundos: number; // duración del bucle exportado (s)
+  motionLoop: boolean;    // loop perfecto: el vídeo/GIF empieza y acaba igual
+  lienzo: LienzoKind;     // tamaño del lienzo (px lógicos)
 
   // --- modo FORMA ---
   forma: ShapeKind;
@@ -67,6 +69,8 @@ export const DEFAULTS: TornoParams = {
   vivo: false,
   forma: 'o-cauce',
   formaPath: '',
+  motionSegundos: 3,
+  motionLoop: true,
   lienzo: '1080x1080',
   retratoTrazo: 'onda',
   retratoRelieve: 40,
@@ -178,6 +182,8 @@ export function coerceParams(input: unknown): TornoParams {
   if (o.forma === 'circulo' || o.forma === 'pildora' || o.forma === 'o-cauce' || o.forma === 'custom') p.forma = o.forma;
   if (typeof o.formaPath === 'string') p.formaPath = o.formaPath;
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;
+  num('motionSegundos', { min: 1, max: 15, step: 1 });
+  if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;
   if (o.lienzo === '1080x1080' || o.lienzo === '1920x1080' || o.lienzo === '1080x1920' || o.lienzo === '1080x1440') p.lienzo = o.lienzo;
   if (o.retratoTrazo === 'onda' || o.retratoTrazo === 'zigzag' || o.retratoTrazo === 'recta') p.retratoTrazo = o.retratoTrazo;
   if (typeof o.retratoCruzada === 'boolean') p.retratoCruzada = o.retratoCruzada;

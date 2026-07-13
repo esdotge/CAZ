@@ -187,11 +187,17 @@ export function renderPortraitTo(
   const reliefAmt = (p.retratoRelieve / 100) * spacing * 6;
   const tilt = Math.max(-1.2, Math.min(1.2, Math.tan((p.curso * Math.PI) / 180)));
 
-  // --- campo de flujo (deriva circular sin costura) ---
+  // --- campo de flujo: deriva circular (loop perfecto) o libre ---
   const flow = new SimplexNoise(p.semilla);
   const driftAmp = spacing * 2.2 * (p.corriente / 100);
-  const tx = Math.cos(2 * Math.PI * phase) * 0.34;
-  const ty = Math.sin(2 * Math.PI * phase) * 0.34;
+  let tx: number, ty: number;
+  if (p.motionLoop) {
+    tx = Math.cos(2 * Math.PI * phase) * 0.34;
+    ty = Math.sin(2 * Math.PI * phase) * 0.34;
+  } else {
+    tx = phase * 2.1;
+    ty = phase * 0.7;
+  }
 
   const stepX = Math.max(CW / 1400, spacing / 4);
 

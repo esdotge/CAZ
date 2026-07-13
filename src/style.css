@@ -144,14 +144,15 @@ main { display: flex; flex: 1 1 auto; min-height: 0; }
   padding: 4px 0 40px;
 }
 
-.group { border-bottom: 1px solid rgba(16,16,18,0.12); padding: 14px 18px; }
+.group { border-bottom: 1px solid rgba(16,16,18,0.12); padding: 16px 18px; }
 .group-title {
   font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
-  opacity: 0.5; margin-bottom: 12px;
+  opacity: 0.5;
 }
+/* respiración uniforme entre los elementos de cada grupo */
+.group > * + * { margin-top: 13px; }
 
-.ctrl { margin-bottom: 14px; }
-.ctrl:last-child { margin-bottom: 0; }
+.ctrl { margin-bottom: 0; }
 .ctrl-head {
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 5px;
@@ -203,20 +204,32 @@ input[type=range]::-moz-range-thumb {
 }
 .preset-btn:hover { background: var(--tinta); color: var(--papel); }
 
-.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
-.toggle .box {
-  width: 14px; height: 14px; border: 1.5px solid var(--tinta); background: var(--papel);
-  flex: 0 0 auto;
+/* interruptor de instrumento: etiqueta + pista con testigo */
+.toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  cursor: pointer; user-select: none;
+  border: 1px solid var(--tinta); background: var(--papel);
+  padding: 9px 12px;
 }
-.toggle.on .box { background: var(--tinta); }
-.toggle span { font-size: 11px; letter-spacing: 0.1em; }
+.toggle:hover { background: var(--arena); }
+.toggle .lbl { font-size: 11px; letter-spacing: 0.1em; }
+.toggle .tk {
+  width: 30px; height: 15px; border: 1.5px solid var(--tinta);
+  position: relative; flex: 0 0 auto; box-sizing: border-box;
+}
+.toggle .tk .dot {
+  position: absolute; top: 1.5px; left: 1.5px; width: 9px; height: 9px;
+  background: var(--tinta); opacity: 0.3;
+  transition: left 0.15s ease, opacity 0.15s ease;
+}
+.toggle.on .tk .dot { left: 16.5px; opacity: 1; }
 
 textarea.json {
   width: 100%; height: 90px; font-family: var(--mono); font-size: 10.5px;
   border: 1px solid var(--tinta); background: var(--papel); color: var(--tinta);
   padding: 8px; resize: vertical;
 }
-.mini-actions { display: flex; gap: 6px; margin-top: 8px; }
+.mini-actions { display: flex; gap: 6px; }
 
 .hidden { display: none !important; }
 

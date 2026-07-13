@@ -141,7 +141,7 @@ export async function exportWebM(
   const W = opts.ancho ?? view.w;
   const H = Math.round((W * view.h) / view.w);
   const fps = opts.fps ?? 30;
-  const durMs = (opts.segundos ?? 3) * 1000;
+  const durMs = (opts.segundos ?? p.motionSegundos) * 1000;
 
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
@@ -188,7 +188,8 @@ export async function exportGIF(
   const W = opts.ancho ?? Math.min(560, view.w);
   const H = Math.round((W * view.h) / view.w);
   const fps = opts.fps ?? 16;
-  const nFrames = opts.frames ?? Math.round((opts.segundos ?? 2.5) * fps);
+  // Cap de fotogramas: un GIF de 10 s a 16 fps ya pesa lo suyo.
+  const nFrames = Math.min(200, opts.frames ?? Math.round((opts.segundos ?? p.motionSegundos) * fps));
   const delayCs = Math.max(2, Math.round(100 / fps));
 
   const canvas = document.createElement('canvas');
