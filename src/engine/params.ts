@@ -5,8 +5,6 @@
 
 export type Mode = 'patron' | 'retrato' | 'forma';
 
-export type Colorway = 'tinta/papel' | 'agua/papel' | 'papel/agua';
-
 export interface TornoParams {
   // --- núcleo de flujo (compartido por los 3 modos) ---
   curso: number;      // Dirección/ángulo global del campo de flujo · 0–360°
@@ -16,11 +14,13 @@ export interface TornoParams {
   calado: number;     // Grosor de línea (y contraste duotono en RETRATO) · 0.25–4 px
   marea: number;      // Amplitud de la ondulación de cada línea · 0–100
   orillas: number;    // Márgenes / zona de calma en los bordes · 0–20%
-  deriva: number;     // Rotación de la 2ª trama para moiré · 0–15° (0 = sin moiré)
+  deriva: number;     // Rotación de la 2ª trama para moiré · 0–360° (0 = sin moiré)
   semilla: number;    // Seed del PRNG · entero
 
   // --- presentación ---
-  colorway: Colorway;
+  colorFondo: string;     // hex — papel / fondo del lienzo
+  colorTinta: string;     // hex — tinta de la trama principal (y del grabado)
+  colorDeriva: string;    // hex — tinta de la 2ª trama (moiré)
   vivo: boolean;          // MOVIMIENTO — animación (el campo se desplaza)
   motionSegundos: number; // duración del bucle exportado (s)
   motionLoop: boolean;    // loop perfecto: el vídeo/GIF empieza y acaba igual
@@ -68,10 +68,12 @@ export const DEFAULTS: TornoParams = {
   orillas: 6,
   deriva: 0,
   semilla: 2049,
-  colorway: 'tinta/papel',
   vivo: false,
   forma: 'o-cauce',
   formaPath: '',
+  colorFondo: '#F6F4EF',
+  colorTinta: '#101012',
+  colorDeriva: '#177E70',
   motionSegundos: 3,
   motionLoop: true,
   lienzo: '1080x1080',
@@ -139,21 +141,33 @@ export const RANGES: Record<string, Range> = {
   calado:    { min: 0.25, max: 4,   step: 0.05, unit: 'px' },
   marea:     { min: 0,    max: 100, step: 1,    unit: '' },
   orillas:   { min: 0,    max: 20,  step: 0.5,  unit: '%' },
-  deriva:    { min: 0,    max: 15,  step: 0.5,  unit: '°' },
+  deriva:    { min: 0,    max: 360, step: 1,    unit: '°' },
   retratoRelieve:    { min: 0,    max: 100, step: 1, unit: '' },
   retratoExposicion: { min: -100, max: 100, step: 1, unit: '' },
   retratoContraste:  { min: 0,   max: 100, step: 1, unit: '' },
   retratoZoom:       { min: 1,   max: 4,   step: 0.05, unit: '×' },
 };
 
-/** Colores de tinta/fondo según colorway. */
-export function inkPaper(cw: Colorway): { ink: string; paper: string } {
-  switch (cw) {
-    case 'agua/papel': return { ink: '#177E70', paper: '#F6F4EF' };
-    case 'papel/agua': return { ink: '#F6F4EF', paper: '#177E70' };
-    case 'tinta/papel':
-    default: return { ink: '#101012', paper: '#F6F4EF' };
-  }
+/** Gamas cromáticas predefinidas — puntos de partida, no límites (v0). */
+export interface Gama {
+  nombre: string;
+  fondo: string;
+  tinta: string;
+  deriva: string;
+}
+
+export const GAMAS: Gama[] = [
+  { nombre: 'Tinta',   fondo: '#F6F4EF', tinta: '#101012', deriva: '#101012' },
+  { nombre: 'Agua',    fondo: '#F6F4EF', tinta: '#177E70', deriva: '#177E70' },
+  { nombre: 'Inverso', fondo: '#177E70', tinta: '#F6F4EF', deriva: '#F6F4EF' },
+  { nombre: 'Noche',   fondo: '#101012', tinta: '#F6F4EF', deriva: '#177E70' },
+  { nombre: 'Señal',   fondo: '#F6F4EF', tinta: '#101012', deriva: '#E24E1B' },
+  { nombre: 'Arena',   fondo: '#E9E2D6', tinta: '#101012', deriva: '#177E70' },
+];
+
+/** Valida un color hex #RRGGBB. */
+export function isHex(v: unknown): v is string {
+  return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
 }
 
 /** Sanea un objeto arbitrario (JSON pegado) a TornoParams válidos. */
@@ -182,7 +196,13 @@ export function coerceParams(input: unknown): TornoParams {
   num('retratoOffX', { min: -1.5, max: 1.5, step: 0.01 });
   num('retratoOffY', { min: -1.5, max: 1.5, step: 0.01 });
   if (typeof o.semilla === 'number' && Number.isFinite(o.semilla)) p.semilla = Math.floor(o.semilla) >>> 0;
-  if (o.colorway === 'tinta/papel' || o.colorway === 'agua/papel' || o.colorway === 'papel/agua') p.colorway = o.colorway;
+  if (isHex(o.colorFondo)) p.colorFondo = o.colorFondo.toUpperCase();
+  if (isHex(o.colorTinta)) p.colorTinta = o.colorTinta.toUpperCase();
+  if (isHex(o.colorDeriva)) p.colorDeriva = o.colorDeriva.toUpperCase();
+  // Compat con recetas antiguas (colorway cerrado).
+  if (o.colorway === 'agua/papel') { p.colorFondo = '#F6F4EF'; p.colorTinta = '#177E70'; p.colorDeriva = '#177E70'; }
+  else if (o.colorway === 'papel/agua') { p.colorFondo = '#177E70'; p.colorTinta = '#F6F4EF'; p.colorDeriva = '#F6F4EF'; }
+  else if (o.colorway === 'tinta/papel') { p.colorFondo = '#F6F4EF'; p.colorTinta = '#101012'; p.colorDeriva = '#101012'; }
   if (o.forma === 'circulo' || o.forma === 'pildora' || o.forma === 'o-cauce' || o.forma === 'custom') p.forma = o.forma;
   if (typeof o.formaPath === 'string') p.formaPath = o.formaPath;
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;

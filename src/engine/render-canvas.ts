@@ -1,5 +1,5 @@
 import { FlowEngine, type Line } from './field';
-import { inkPaper, type TornoParams, type View } from './params';
+import type { TornoParams, View } from './params';
 
 export interface FrameShape {
   d: string;
@@ -34,13 +34,12 @@ export function drawPatternFrame(
   view: View,
   shape?: FrameShape,
 ): void {
-  const { ink, paper } = inkPaper(params.colorway);
   const sx = outW / view.w;
   const sy = outH / view.h;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
-  ctx.fillStyle = paper;
+  ctx.fillStyle = params.colorFondo;
   ctx.fillRect(0, 0, outW, outH);
 
   ctx.save();
@@ -62,14 +61,17 @@ export function drawPatternFrame(
   const { main, moire } = engine.generate(params, phase, view);
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  ctx.strokeStyle = ink;
   ctx.lineWidth = params.calado;
 
   if (moire.length) {
-    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = params.colorDeriva;
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = params.calado * 0.85;
     strokeLines(ctx, moire);
     ctx.globalAlpha = 1;
+    ctx.lineWidth = params.calado;
   }
+  ctx.strokeStyle = params.colorTinta;
   strokeLines(ctx, main);
 
   ctx.restore();

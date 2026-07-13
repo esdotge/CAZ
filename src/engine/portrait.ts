@@ -1,5 +1,5 @@
 import { SimplexNoise } from './noise';
-import { inkPaper, type TornoParams } from './params';
+import type { TornoParams } from './params';
 
 const CAP = 2000; // cap interno de resolución de muestreo (spec §5)
 
@@ -110,10 +110,9 @@ function smoothstep(e0: number, e1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Tinta/fondo efectivos del retrato (duotono agua/papel por defecto). */
+/** Tinta/fondo del retrato — colores libres de la receta. */
 export function portraitInk(p: TornoParams): { ink: string; paper: string } {
-  const cw = p.colorway === 'tinta/papel' ? 'agua/papel' : p.colorway;
-  return inkPaper(cw);
+  return { ink: p.colorTinta, paper: p.colorFondo };
 }
 
 /**

@@ -133,11 +133,12 @@ export async function encodeGIF(w: number, h: number, palette: number[][], frame
 }
 
 /**
- * Construye una rampa de N colores de `paper` a `ink` y una función que
- * quantiza un píxel RGBA a su índice en la rampa (proyección sobre la recta
- * papel→tinta — exacta para duotono).
+ * Construye rampas fondo→tinta para una o varias tintas y una función que
+ * quantiza un píxel al color de rampa más cercano (proyección sobre cada
+ * segmento fondo→tinta y distancia al punto proyectado). Exacta para line-art
+ * plano; con varias tintas cada trazo cae en su propia rampa.
  */
-export function duotoneRamp(ink: string, paper: string, n = 16): {
+export function multiRamp(paper: string, inks: string[], stepsPerInk = 12): {
   palette: number[][];
   quantize: (r: number, g: number, b: number) => number;
 } {
@@ -146,21 +147,40 @@ export function duotoneRamp(ink: string, paper: string, n = 16): {
     return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
   };
   const p0 = hex(paper);
-  const p1 = hex(ink);
+  const uniqueInks = [...new Set(inks)];
+  const n = stepsPerInk;
+
   const palette: number[][] = [];
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    palette.push([
-      Math.round(p0[0] + (p1[0] - p0[0]) * t),
-      Math.round(p0[1] + (p1[1] - p0[1]) * t),
-      Math.round(p0[2] + (p1[2] - p0[2]) * t),
-    ]);
-  }
-  const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
-  const denom = dx * dx + dy * dy + dz * dz || 1;
+  const segs = uniqueInks.map((inkHex) => {
+    const p1 = hex(inkHex);
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      palette.push([
+        Math.round(p0[0] + (p1[0] - p0[0]) * t),
+        Math.round(p0[1] + (p1[1] - p0[1]) * t),
+        Math.round(p0[2] + (p1[2] - p0[2]) * t),
+      ]);
+    }
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
+    return { dx, dy, dz, denom: dx * dx + dy * dy + dz * dz || 1 };
+  });
+
   const quantize = (r: number, g: number, b: number): number => {
-    const t = ((r - p0[0]) * dx + (g - p0[1]) * dy + (b - p0[2]) * dz) / denom;
-    return Math.max(0, Math.min(n - 1, Math.round(t * (n - 1))));
+    let best = 0;
+    let bestDist = Infinity;
+    const rr = r - p0[0], gg = g - p0[1], bb = b - p0[2];
+    for (let si = 0; si < segs.length; si++) {
+      const s = segs[si];
+      let t = (rr * s.dx + gg * s.dy + bb * s.dz) / s.denom;
+      t = Math.max(0, Math.min(1, t));
+      const px = s.dx * t - rr, py = s.dy * t - gg, pz = s.dz * t - bb;
+      const dist = px * px + py * py + pz * pz;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = si * n + Math.round(t * (n - 1));
+      }
+    }
+    return best;
   };
   return { palette, quantize };
 }

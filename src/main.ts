@@ -1,11 +1,11 @@
 import './style.css';
 import {
-  DEFAULTS, PRESETS, RANGES, coerceParams, inkPaper, lienzoDims,
-  type Colorway, type LienzoKind, type Mode, type ShapeKind, type TornoParams, type TrazoKind, type View,
+  DEFAULTS, GAMAS, PRESETS, RANGES, coerceParams, isHex, lienzoDims,
+  type LienzoKind, type Mode, type ShapeKind, type TornoParams, type TrazoKind, type View,
 } from './engine/params';
 import { FlowEngine, lineToPath, type Line } from './engine/field';
 import { shapePath } from './engine/shape';
-import { renderPortrait, renderPortraitTo, portraitInk, portraitLayout } from './engine/portrait';
+import { renderPortrait, renderPortraitTo, portraitLayout } from './engine/portrait';
 import { drawPatternFrame, type FrameShape } from './engine/render-canvas';
 import {
   exportSVG, exportPNG, presetJSON, exportWebM, exportGIF, webmSupported,
@@ -87,7 +87,8 @@ let animTime = 0;
 let animHandle = 0;
 
 function render(): void {
-  const { ink, paper } = inkPaper(params.colorway);
+  const ink = params.colorTinta;
+  const paper = params.colorFondo;
   svg.style.background = paper;
   canvas.style.background = paper;
 
@@ -110,7 +111,7 @@ function render(): void {
 
   if (mode === 'patron') {
     let inner = '';
-    if (moire.length) inner += linesToSVG(moire, ink, params.calado, 0.5);
+    if (moire.length) inner += linesToSVG(moire, params.colorDeriva, params.calado * 0.85, 0.6);
     inner += linesToSVG(main, ink, params.calado);
     svg.innerHTML = inner;
   } else {
@@ -120,7 +121,7 @@ function render(): void {
     const clip = `<defs><clipPath id="caz-clip" clip-rule="${fillRule}">` +
       `<path d="${d}" clip-rule="${fillRule}"${transform ? ` transform="${transform}"` : ''}/></clipPath></defs>`;
     let content = '';
-    if (moire.length) content += linesToSVG(moire, ink, params.calado, 0.5);
+    if (moire.length) content += linesToSVG(moire, params.colorDeriva, params.calado * 0.85, 0.6);
     content += linesToSVG(main, ink, params.calado);
     svg.innerHTML = clip + `<g clip-path="url(#caz-clip)">${content}</g>`;
   }
@@ -163,7 +164,7 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   calado: { name: 'CALADO', desc: 'Grosor de línea' },
   marea: { name: 'MAREA', desc: 'Amplitud de la ondulación' },
   orillas: { name: 'ORILLAS', desc: 'Zona de calma en los bordes' },
-  deriva: { name: 'DERIVA', desc: '2ª trama para moiré (0 = sin moiré)' },
+  deriva: { name: 'DERIVA', desc: 'Rotación de la 2ª trama, 0–360° (0 = sin moiré)' },
   retratoRelieve: { name: 'RELIEVE', desc: 'Las líneas se abomban con el volumen' },
   retratoExposicion: { name: 'EXPOSICIÓN', desc: 'Brillo global de la foto' },
   retratoContraste: { name: 'CONTRASTE', desc: 'Refuerza la lectura de grabado' },
@@ -269,20 +270,69 @@ function buildPanel(): void {
   seedRow.appendChild(seedInput); seedRow.appendChild(dice);
   panel.appendChild(group('Semilla', [seedRow]));
 
-  // COLOR
-  const cwWrap = el('div', 'seg');
-  const cws: Colorway[] = ['tinta/papel', 'agua/papel', 'papel/agua'];
-  cws.forEach((cw) => {
-    const b = el('button', params.colorway === cw ? 'active' : '', cw) as HTMLButtonElement;
-    b.addEventListener('click', () => {
-      params.colorway = cw;
-      cwWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
-      b.classList.add('active');
+  // COLOR — gamas predefinidas + colores libres (fondo / tinta / deriva)
+  const colorSyncs: Array<() => void> = [];
+
+  const colorRow = (label: string, key: 'colorFondo' | 'colorTinta' | 'colorDeriva', desc: string): HTMLElement => {
+    const row = el('div', 'color-row');
+    row.innerHTML = `<div><span class="ctrl-name">${label}</span><div class="ctrl-desc">${desc}</div></div>`;
+    const ctl = el('div', 'color-ctl');
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.value = params[key];
+    const hexIn = document.createElement('input');
+    hexIn.className = 'hex-input';
+    hexIn.type = 'text';
+    hexIn.value = params[key].toUpperCase();
+    hexIn.maxLength = 7;
+    hexIn.spellcheck = false;
+
+    const apply = (v: string): void => {
+      params[key] = v.toUpperCase();
+      swatch.value = params[key];
+      hexIn.value = params[key];
+      hexIn.classList.remove('bad');
+      refreshJSON(); scheduleRender();
+    };
+    swatch.addEventListener('input', () => apply(swatch.value));
+    hexIn.addEventListener('input', () => {
+      let v = hexIn.value.trim();
+      if (v && !v.startsWith('#')) v = '#' + v;
+      if (isHex(v)) apply(v);
+      else hexIn.classList.add('bad');
+    });
+    hexIn.addEventListener('blur', () => { hexIn.value = params[key]; hexIn.classList.remove('bad'); });
+
+    colorSyncs.push(() => { swatch.value = params[key]; hexIn.value = params[key].toUpperCase(); });
+    ctl.appendChild(swatch);
+    ctl.appendChild(hexIn);
+    row.appendChild(ctl);
+    return row;
+  };
+
+  const gamaWrap = el('div', 'gamas');
+  GAMAS.forEach((g) => {
+    const chip = el('button', 'gama') as HTMLButtonElement;
+    chip.title = `${g.nombre} · ${g.tinta} sobre ${g.fondo}`;
+    chip.innerHTML =
+      `<span class="gama-swatch" style="background:linear-gradient(135deg, ${g.tinta} 0 46%, ${g.deriva} 46% 54%, ${g.fondo} 54% 100%)"></span>` +
+      `<span class="gama-name">${g.nombre}</span>`;
+    chip.addEventListener('click', () => {
+      params.colorFondo = g.fondo.toUpperCase();
+      params.colorTinta = g.tinta.toUpperCase();
+      params.colorDeriva = g.deriva.toUpperCase();
+      colorSyncs.forEach((f) => f());
       refreshJSON(); render();
     });
-    cwWrap.appendChild(b);
+    gamaWrap.appendChild(chip);
   });
-  panel.appendChild(group('Color', [cwWrap]));
+
+  panel.appendChild(group('Color', [
+    gamaWrap,
+    colorRow('FONDO', 'colorFondo', 'Papel del lienzo'),
+    colorRow('TINTA', 'colorTinta', 'Trama principal y grabado'),
+    colorRow('DERIVA', 'colorDeriva', '2ª trama (moiré)'),
+  ]));
 
   // MOVIMIENTO — animación en vivo + export de bucle
   const motionRow = el('div', 'seg');
@@ -461,13 +511,18 @@ async function runMotionExport(kind: 'webm' | 'gif', btn: HTMLButtonElement, don
     const img = portraitImg!;
     src = {
       draw: (ctx, W, H, phase) => renderPortraitTo(ctx, W, H, img, params, phase),
-      ...portraitInk(params),
+      paper: params.colorFondo,
+      inks: [params.colorTinta],
     };
   } else {
     const shape = currentShape();
+    const inks = params.deriva > 0.01 && params.colorDeriva !== params.colorTinta
+      ? [params.colorTinta, params.colorDeriva]
+      : [params.colorTinta];
     src = {
       draw: (ctx, W, H, phase) => drawPatternFrame(ctx, W, H, params, engine, phase, view, shape),
-      ...inkPaper(params.colorway),
+      paper: params.colorFondo,
+      inks,
     };
   }
 

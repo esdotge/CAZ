@@ -45,7 +45,7 @@ Abre `http://localhost:5173`.
 | **CALADO** | Grosor de línea (y contraste del duotono en RETRATO) |
 | **MAREA** | Amplitud de la ondulación |
 | **ORILLAS** | Zona de calma en los bordes |
-| **DERIVA** | Rotación de la 2ª trama para moiré (0 = sin moiré) |
+| **DERIVA** | Rotación de la 2ª trama para moiré, 0–360° (0 = sin moiré), con color propio |
 | **SEMILLA** | Seed del PRNG (determinista, reproducible) |
 
 ## Reproducibilidad
@@ -53,6 +53,15 @@ Abre `http://localhost:5173`.
 Misma semilla + mismos parámetros = misma pieza, siempre (PRNG `splitmix32` +
 simplex sembrado). Copia la **receta JSON** del panel para versionar recetas en el
 brandbook; pégala y pulsa APLICAR para reconstruir la pieza exacta.
+
+## Color
+
+Tres tintas libres en hex — **FONDO** (papel), **TINTA** (trama principal y
+grabado) y **DERIVA** (2ª trama del moiré) — cada una con recuadro de color y
+campo hexadecimal sincronizados. Seis **gamas predefinidas** como punto de
+partida (Tinta, Agua, Inverso, Noche, Señal, Arena). En v0 la elección es
+libre; la restricción de paleta de marca llegará después. Los colores viajan
+en la receta JSON.
 
 ## Lienzo
 

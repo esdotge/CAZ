@@ -1,5 +1,5 @@
-import { inkPaper, lienzoDims, type Mode, type TornoParams } from './params';
-import { encodeGIF, duotoneRamp, type GifFrame } from './gif';
+import { lienzoDims, type Mode, type TornoParams } from './params';
+import { encodeGIF, multiRamp, type GifFrame } from './gif';
 
 function download(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -26,7 +26,7 @@ export function svgString(svgEl: SVGSVGElement, p: TornoParams): string {
   clone.setAttribute('height', String(view.h));
   clone.setAttribute('viewBox', `0 0 ${view.w} ${view.h}`);
   // Fondo papel como primer rect (para que el SVG no sea transparente).
-  const { paper } = inkPaper(p.colorway);
+  const paper = p.colorFondo;
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bg.setAttribute('x', '0');
   bg.setAttribute('y', '0');
@@ -109,7 +109,8 @@ export function presetJSON(p: TornoParams, mode: Mode): string {
  */
 export interface MotionSource {
   draw: (ctx: CanvasRenderingContext2D, W: number, H: number, phase: number) => void;
-  ink: string;
+  /** Tintas presentes en el fotograma (para la paleta del GIF). */
+  inks: string[];
   paper: string;
 }
 
@@ -196,7 +197,7 @@ export async function exportGIF(
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
 
-  const { palette, quantize } = duotoneRamp(src.ink, src.paper, 16);
+  const { palette, quantize } = multiRamp(src.paper, src.inks, 12);
 
   const frames: GifFrame[] = [];
   for (let i = 0; i < nFrames; i++) {
