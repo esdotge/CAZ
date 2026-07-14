@@ -190,6 +190,20 @@ export function renderPortraitTo(
   const maxAmp = spacing * 0.9 * (p.marea / 100);
   const reliefAmt = (p.retratoRelieve / 100) * spacing * 6;
 
+  // --- CONTORNO: campo de tangentes — las líneas giran con las isofotas ---
+  // (el gesto del retrato del billete: la línea envuelve la mejilla, no sólo
+  // se abomba). Se integra la desviación lateral con amortiguación para que
+  // las líneas sigan el contorno y vuelvan a su raíl sin colisionar.
+  const contorno = p.retratoContorno / 100;
+  const eGrad = Math.max(2, spacing * 0.6);
+  const blurAtCanvas = (x: number, y: number): number => {
+    const u = (x - ox) / drawW;
+    const v = (y - oy) / drawH;
+    return u >= 0 && u <= 1 && v >= 0 && v <= 1
+      ? sampleBilinear(grid.blur, grid.sw, grid.sh, u, v)
+      : 0.5;
+  };
+
   // --- CAUCE: compresión de trama + meandro del canal (la firma) ---
   // k>1 aprieta las líneas hacia el centro del barrido y las abre a los
   // bordes; el grosor se compensa con el paso local para conservar el tono.
@@ -273,6 +287,7 @@ export function renderPortraitTo(
       const ampK = pitch / spacing; // la onda escala con el paso local
       let e1: Array<[number, number]> = [];
       let e2: Array<[number, number]> = [];
+      let lat = 0; // desviación lateral acumulada del seguimiento de contorno
 
       const flush = (): void => {
         if (e1.length > 1) {
@@ -314,7 +329,27 @@ export function renderPortraitTo(
           ? flow.fbm(xN * 0.004 + noiseOff + tx, yN * 0.004 + ty, 2) * driftAmp
           : 0;
 
-        const off0 = relief + drift;
+        // CONTORNO: gradiente de la luminancia difuminada → tangente de
+        // isofota; la línea acumula desviación hacia ella (con fuga al raíl)
+        if (contorno > 0.01) {
+          const gxc = blurAtCanvas(bx + eGrad, by) - blurAtCanvas(bx - eGrad, by);
+          const gyc = blurAtCanvas(bx, by + eGrad) - blurAtCanvas(bx, by - eGrad);
+          const gm = Math.hypot(gxc, gyc);
+          if (gm > 1e-4) {
+            let tgx = -gyc / gm, tgy = gxc / gm; // tangente (⊥ gradiente)
+            let du_ = tgx * ux + tgy * uy;
+            if (du_ < 0) { tgx = -tgx; tgy = -tgy; du_ = -du_; } // alinear con el avance
+            const dn_ = tgx * nvx + tgy * nvy;
+            const alpha = Math.max(-2, Math.min(2, dn_ / Math.max(0.35, du_)));
+            const strength = Math.min(1, gm * 9) * contorno;
+            lat = lat * 0.965 + alpha * strength * stepS * 0.9;
+          } else {
+            lat *= 0.965;
+          }
+          lat = Math.max(-pitch * 3, Math.min(pitch * 3, lat));
+        }
+
+        const off0 = relief + drift + lat;
 
         // tono muestreado donde la línea realmente pasa (desplazada por el warp)
         const sx = bx + nvx * off0;

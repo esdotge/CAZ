@@ -29,7 +29,9 @@ Abre `http://localhost:5173`.
   billete): las líneas nunca se funden. Controles: TRAZO (onda / zigzag / recta /
   **bucle** — trocoide que riza sobre sí misma en las sombras, el rizo de buril del
   grabador), **CAPAS DE TRAMA** (1–3: cruzada ondulada en medios tonos — malla de
-  pasaporte — y tejido diagonal en sombras profundas),
+  pasaporte — y tejido diagonal en sombras profundas), **CONTORNO** (campo de
+  tangentes: las líneas giran siguiendo las isofotas — envuelven la mejilla en
+  vez de sólo abombarse),
   **DETALLE** (realce de detalle fino — claridad de grabado), RELIEVE (las líneas
   se abomban siguiendo el volumen), EXPOSICIÓN y CONTRASTE. ENCUADRE escala la
   foto y arrastrando el lienzo la recolocas. Para grano de billete: CAUDAL 250–350.
@@ -53,6 +55,7 @@ Abre `http://localhost:5173`.
 | **CAUDAL** | Densidad — nº de líneas |
 | **CAUCE** | Fuerza del canal: comprime y desvía |
 | **CORRIENTE** | Turbulencia y velocidad del campo |
+| **TORSIÓN** | Cizalla de fase entre líneas — la trama gira como tela en 3D |
 | **CALADO** | Grosor de línea (y contraste del duotono en RETRATO) |
 | **MAREA** | Amplitud de la ondulación |
 | **ORILLAS** | Zona de calma en los bordes |

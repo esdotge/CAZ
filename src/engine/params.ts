@@ -11,6 +11,7 @@ export interface TornoParams {
   caudal: number;     // Densidad: nº de líneas de la trama · 20–400
   cauce: number;      // Fuerza del canal: compresión/desvío de la geometría · 0–100
   corriente: number;  // Turbulencia/velocidad del campo · 0–100
+  torsion: number;    // Cizalla de fase entre líneas: la trama gira en 3D · 0–100
   calado: number;     // Grosor de línea (y contraste duotono en RETRATO) · 0.25–4 px
   marea: number;      // Amplitud de la ondulación de cada línea · 0–100
   orillas: number;    // Márgenes / zona de calma en los bordes · 0–20%
@@ -44,6 +45,7 @@ export interface TornoParams {
   // --- modo RETRATO ---
   retratoTrazo: TrazoKind;   // forma de la línea de grabado
   retratoCapas: number;      // 1–3 capas de trama: cruzadas progresivas en medios/sombras
+  retratoContorno: number;   // 0–100, las líneas giran siguiendo los contornos (tangentes)
   retratoDetalle: number;    // 0–100, realce de detalle fino (claridad de grabado)
   retratoRelieve: number;    // 0–100, warp por volumen: las líneas se abomban
   retratoExposicion: number; // -100..100, brillo global de la foto
@@ -83,6 +85,7 @@ export const DEFAULTS: TornoParams = {
   marea: 34,
   orillas: 6,
   deriva: 0,
+  torsion: 0,
   semilla: 2049,
   vivo: false,
   forma: 'o-cauce',
@@ -104,6 +107,7 @@ export const DEFAULTS: TornoParams = {
   lienzo: '1080x1080',
   retratoTrazo: 'onda',
   retratoCapas: 2,
+  retratoContorno: 40,
   retratoDetalle: 35,
   retratoRelieve: 40,
   retratoExposicion: 0,
@@ -160,19 +164,19 @@ export const PRESETS: Preset[] = [
     nombre: 'Billete',
     descripcion: 'Grabado de banco: 3 capas, detalle alto, grano fino',
     mode: 'retrato',
-    params: { caudal: 300, calado: 1.2, marea: 30, corriente: 15, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoCapas: 3, retratoDetalle: 60, retratoRelieve: 45, retratoContraste: 55, semilla: 2049 },
+    params: { caudal: 300, calado: 1.2, marea: 30, corriente: 15, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoCapas: 3, retratoContorno: 50, retratoDetalle: 60, retratoRelieve: 45, retratoContraste: 55, semilla: 2049 },
   },
   {
     nombre: 'Buril',
     descripcion: 'Rizos de buril que crecen en la sombra (pelo del billete)',
     mode: 'retrato',
-    params: { caudal: 220, calado: 1.2, marea: 55, corriente: 10, curso: 0, orillas: 4, retratoTrazo: 'bucle', retratoCapas: 2, retratoDetalle: 55, retratoRelieve: 40, retratoContraste: 52, semilla: 2049 },
+    params: { caudal: 220, calado: 1.2, marea: 55, corriente: 10, curso: 0, orillas: 4, retratoTrazo: 'bucle', retratoCapas: 2, retratoContorno: 45, retratoDetalle: 55, retratoRelieve: 40, retratoContraste: 52, semilla: 2049 },
   },
   {
     nombre: 'Topográfico',
     descripcion: 'Línea recta con relieve fuerte — el volumen manda',
     mode: 'retrato',
-    params: { caudal: 200, calado: 1.6, marea: 20, corriente: 8, curso: 0, orillas: 4, retratoTrazo: 'recta', retratoCapas: 2, retratoDetalle: 40, retratoRelieve: 80, retratoContraste: 50, semilla: 2049 },
+    params: { caudal: 200, calado: 1.6, marea: 20, corriente: 8, curso: 0, orillas: 4, retratoTrazo: 'recta', retratoCapas: 2, retratoContorno: 35, retratoDetalle: 40, retratoRelieve: 80, retratoContraste: 50, semilla: 2049 },
   },
 
   // --- SÍMBOLO ---
@@ -220,6 +224,8 @@ export const RANGES: Record<string, Range> = {
   marea:     { min: 0,    max: 100, step: 1,    unit: '' },
   orillas:   { min: 0,    max: 20,  step: 0.5,  unit: '%' },
   deriva:    { min: 0,    max: 360, step: 1,    unit: '°' },
+  torsion:   { min: 0,    max: 100, step: 1,    unit: '' },
+  retratoContorno:   { min: 0,    max: 100, step: 1, unit: '' },
   retratoDetalle:    { min: 0,    max: 100, step: 1, unit: '' },
   retratoRelieve:    { min: 0,    max: 100, step: 1, unit: '' },
   retratoExposicion: { min: -100, max: 100, step: 1, unit: '' },
@@ -273,6 +279,8 @@ export function coerceParams(input: unknown): TornoParams {
   num('marea', RANGES.marea);
   num('orillas', RANGES.orillas);
   num('deriva', RANGES.deriva);
+  num('torsion', RANGES.torsion);
+  num('retratoContorno', RANGES.retratoContorno);
   num('retratoRelieve', RANGES.retratoRelieve);
   num('retratoExposicion', RANGES.retratoExposicion);
   num('retratoContraste', RANGES.retratoContraste);

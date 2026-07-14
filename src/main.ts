@@ -244,6 +244,8 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   marea: { name: 'MAREA', desc: 'Amplitud de la ondulación' },
   orillas: { name: 'ORILLAS', desc: 'Zona de calma en los bordes' },
   deriva: { name: 'DERIVA', desc: 'Rotación de la 2ª trama, 0–360° (0 = sin moiré)' },
+  torsion: { name: 'TORSIÓN', desc: 'Cizalla de fase entre líneas — la trama gira en 3D' },
+  retratoContorno: { name: 'CONTORNO', desc: 'Las líneas giran siguiendo los contornos de la imagen' },
   retratoDetalle: { name: 'DETALLE', desc: 'Realce del detalle fino — claridad de grabado' },
   retratoRelieve: { name: 'RELIEVE', desc: 'Las líneas se abomban con el volumen' },
   retratoExposicion: { name: 'EXPOSICIÓN', desc: 'Brillo global de la foto' },
@@ -371,7 +373,7 @@ function buildPanel(): void {
   }
 
   if (mode !== 'symbol') {
-  panel.appendChild(group('Flujo', [slider('curso'), slider('caudal'), slider('cauce'), slider('corriente')]));
+  panel.appendChild(group('Flujo', [slider('curso'), slider('caudal'), slider('cauce'), slider('corriente'), slider('torsion')]));
 
   // LÍNEA
   panel.appendChild(group('Línea', [slider('calado'), slider('marea'), slider('orillas'), slider('deriva')]));
@@ -633,7 +635,7 @@ function buildPanel(): void {
       capasCtrl,
       fitCtrl,
       slider('retratoZoom'),
-      slider('retratoDetalle'), slider('retratoRelieve'),
+      slider('retratoContorno'), slider('retratoDetalle'), slider('retratoRelieve'),
       slider('retratoExposicion'), slider('retratoContraste'),
       invToggle, loadBtn,
       el('div', 'hint-inline', 'Arrastra una foto al lienzo y muévela arrastrando sobre él (ENCUADRE la escala). CURSO inclina la trama; CAUCE comprime la densidad y hace serpentear el canal; DERIVA añade una 2ª trama rotada con su color (moiré de billete). Sube CAUDAL (250–350) para grano fino.'),

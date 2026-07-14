@@ -88,6 +88,13 @@ export class FlowEngine {
     const fieldAmp = (p.marea / 100) * R * 0.14;
     const ff = 0.0011 + (p.corriente / 100) * 0.0042;
     const octaves = p.corriente > 55 ? 3 : 2;
+    // TORSIÓN: onda coherente cuya fase avanza línea a línea — cizalla
+    // diagonal que lee como tela retorcida en 3D (compresión/apertura suave).
+    const torAmp = (p.torsion / 100) * R * 0.12;
+    const torK = (2 * Math.PI) / (R * 0.85);
+    const torStep = (p.torsion / 100) * 0.42; // radianes por línea
+    const torPhase = 2 * Math.PI * time;
+
     // Zona de calma.
     const band = (p.orillas / 100) * Math.min(W, H);
 
@@ -137,7 +144,10 @@ export class FlowEngine {
           fieldAmp *
           this.flow.fbm(u * ff + 11.1 + tx, v0 * ff * 0.6 + ty, octaves) *
           taper;
-        const v = v0 + flowMag;
+        const tor = torAmp > 0.001
+          ? torAmp * Math.sin(u * torK + i * torStep + torPhase) * taper
+          : 0;
+        const v = v0 + flowMag + tor;
 
         const x = CX + u * dx + v * nx;
         const y = CY + u * dy + v * ny;
