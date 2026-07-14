@@ -209,13 +209,23 @@ export function renderPortraitTo(
     ty = phase * 0.7;
   }
 
-  const wave = (s: number): number => {
+  /**
+   * Forma de onda como vector [a lo largo, perpendicular] — BUCLE necesita
+   * las dos componentes: es una trocoide que riza sobre sí misma cuando la
+   * amplitud (el tono) supera el avance, como el rizo de buril del grabador
+   * (pelo y sombras del billete).
+   */
+  const waveVec = (s: number, amp: number): [number, number] => {
     const t = k * s + wavePhase;
     switch (p.retratoTrazo) {
-      case 'zigzag': return (2 / Math.PI) * Math.asin(Math.sin(t));
-      case 'recta': return 0;
+      case 'zigzag': return [0, amp * (2 / Math.PI) * Math.asin(Math.sin(t))];
+      case 'recta': return [0, 0];
+      case 'bucle': {
+        const tb = t * 1.6;
+        return [-amp * 1.25 * Math.sin(tb), amp * Math.cos(tb)];
+      }
       case 'onda':
-      default: return Math.sin(t);
+      default: return [0, amp * Math.sin(t)];
     }
   };
 
@@ -238,7 +248,6 @@ export function renderPortraitTo(
     thetaRad: number,
     noiseOff: number,
     withWave: boolean,
-    dots: boolean,
     getHalf: (dark: number, taper: number, pitch: number) => number,
   ): void => {
     const ux = Math.cos(thetaRad), uy = Math.sin(thetaRad);
@@ -247,8 +256,8 @@ export function renderPortraitTo(
     const halfLen = Math.hypot(CW, CH) / 2 + spacing;
     const halfExt = (Math.abs(CW * nvx) + Math.abs(CH * nvy)) / 2 + spacing;
     const nSweep = Math.ceil((2 * halfExt) / spacing);
-    // PUNTOS: paso = paso de rejilla (un punto por celda); líneas: paso fino
-    const stepS = dots ? spacing * 0.92 : Math.max(CW / 1400, spacing / 4);
+    // el bucle necesita paso fino para dibujar el rizo completo
+    const stepS = Math.max(CW / 1400, spacing / (p.retratoTrazo === 'bucle' ? 6 : 4));
 
     for (let li = 0; li < nSweep; li++) {
       const cRaw = -halfExt + spacing * (li + 0.5);
@@ -264,7 +273,6 @@ export function renderPortraitTo(
       const ampK = pitch / spacing; // la onda escala con el paso local
       let e1: Array<[number, number]> = [];
       let e2: Array<[number, number]> = [];
-      if (dots) ctx.beginPath();
 
       const flush = (): void => {
         if (e1.length > 1) {
@@ -279,9 +287,7 @@ export function renderPortraitTo(
         e2 = [];
       };
 
-      // tresbolillo: las filas alternas se desplazan media celda (rotograbado)
-      const s0 = -halfLen + (dots && li % 2 === 1 ? stepS / 2 : 0);
-      for (let s = s0; s <= halfLen; s += stepS) {
+      for (let s = -halfLen; s <= halfLen; s += stepS) {
         // CAUCE: meandro del canal — toda la trama serpentea junta
         const cdef = chAmp > 0.001 ? chan.noise2D(s * 0.0012 + 50, 3.7) * chAmp : 0;
         const cLine = c0 + cdef;
@@ -289,7 +295,7 @@ export function renderPortraitTo(
         const by = ccy + uy * s + nvy * cLine;
 
         // fuera del área de barrido: corta y sigue
-        if (bx < areaX0 || bx > areaX1 || by < areaY0 || by > areaY1) { if (!dots) flush(); continue; }
+        if (bx < areaX0 || bx > areaX1 || by < areaY0 || by > areaY1) { flush(); continue; }
 
         // coords normalizadas (independientes de la resolución de salida)
         const xN = (bx / CW) * 1200;
@@ -323,31 +329,21 @@ export function renderPortraitTo(
 
         const taper = taperAt(sx, sy);
         const amp = withWave ? maxAmp * ampK * dark * taper : 0;
-        const off = off0 + (withWave ? wave(s + halfLen) * amp : 0);
-        const px = bx + nvx * off;
-        const py = by + nvy * off;
+        const [al, pe] = withWave ? waveVec(s + halfLen, amp) : [0, 0];
+        const off = off0 + pe;
+        const px = bx + nvx * off + ux * al;
+        const py = by + nvy * off + uy * al;
 
         const half = getHalf(dark, taper, pitch);
-        if (dots) {
-          // stipple: un punto por celda, radio según tono (rotograbado / £20 Turner)
-          if (half >= 0.14) {
-            const r = Math.min(half * 1.15, pitch * 0.5);
-            ctx.moveTo(px + r, py);
-            ctx.arc(px, py, r, 0, 2 * Math.PI);
-          }
-          continue;
-        }
         if (half < 0.12) { flush(); continue; }
         e1.push([px + nvx * half, py + nvy * half]);
         e2.push([px - nvx * half, py - nvy * half]);
       }
-      if (dots) ctx.fill();
-      else flush();
+      flush();
     }
   };
 
   const theta = (p.curso * Math.PI) / 180;
-  const isDots = p.retratoTrazo === 'puntos';
   const capas = Math.min(3, Math.max(1, Math.round(p.retratoCapas)));
 
   // anchura AM de la trama principal (compartida con la trama de DERIVA)
@@ -359,30 +355,30 @@ export function renderPortraitTo(
   };
 
   // ---------- capa 1: trama principal (dirección CURSO) ----------
-  sweep(theta, 0, !isDots, isDots, mainHalf);
+  sweep(theta, 0, true, mainHalf);
 
   // ---------- DERIVA: 2ª trama del grabado rotada — moiré de billete ----------
   if (p.deriva > 0.01) {
     ctx.fillStyle = p.colorDeriva;
     ctx.globalAlpha = 0.6;
     const derivaRad = (p.deriva * Math.PI) / 180;
-    sweep(theta + derivaRad, 77.7, !isDots, isDots, (dark, taper, pitch) =>
+    sweep(theta + derivaRad, 77.7, true, (dark, taper, pitch) =>
       mainHalf(dark, taper, pitch) * 0.85);
     ctx.globalAlpha = 1;
     ctx.fillStyle = ink;
   }
 
-  // ---------- capa 2: cruzada perpendicular — entra en medios tonos ----------
+  // ---------- capa 2: cruzada perpendicular ondulada — malla de pasaporte ----------
   if (capas >= 2) {
-    sweep(theta + Math.PI / 2, 31.7, false, false, (dark, taper, pitch) => {
+    sweep(theta + Math.PI / 2, 31.7, true, (dark, taper, pitch) => {
       const presence = smoothstep(0.42, 0.78, dark);
       return Math.min(caladoK * pitch * 0.34 * presence * taper, pitch * 0.30);
     });
   }
 
-  // ---------- capa 3: diagonal — sólo sombras profundas (negro tejido) ----------
+  // ---------- capa 3: diagonal recta — sólo sombras profundas (negro tejido) ----------
   if (capas >= 3) {
-    sweep(theta + Math.PI / 4, 63.9, false, false, (dark, taper, pitch) => {
+    sweep(theta + Math.PI / 4, 63.9, false, (dark, taper, pitch) => {
       const presence = smoothstep(0.66, 0.94, dark);
       return Math.min(caladoK * pitch * 0.26 * presence * taper, pitch * 0.24);
     });

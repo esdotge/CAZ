@@ -27,8 +27,9 @@ Abre `http://localhost:5173`.
   lienzo; se procesa **en tu navegador, nada sube a servidor**. El tono se codifica
   en la anchura de línea a espaciado constante (halftoning AM, como el grabado de
   billete): las líneas nunca se funden. Controles: TRAZO (onda / zigzag / recta /
-  **puntos** — stipple tipo £20 Turner), **CAPAS DE TRAMA** (1–3: cruzada en medios
-  tonos y tejido diagonal en sombras profundas, el tramado progresivo del billete),
+  **bucle** — trocoide que riza sobre sí misma en las sombras, el rizo de buril del
+  grabador), **CAPAS DE TRAMA** (1–3: cruzada ondulada en medios tonos — malla de
+  pasaporte — y tejido diagonal en sombras profundas),
   **DETALLE** (realce de detalle fino — claridad de grabado), RELIEVE (las líneas
   se abomban siguiendo el volumen), EXPOSICIÓN y CONTRASTE. ENCUADRE escala la
   foto y arrastrando el lienzo la recolocas. Para grano de billete: CAUDAL 250–350.

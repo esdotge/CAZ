@@ -61,7 +61,7 @@ export type SymbolKind = 'onda' | 'abanico' | 'ala' | 'arcos' | 'cruce';
 
 export type RemateKind = 'romo' | 'recto';
 
-export type TrazoKind = 'onda' | 'zigzag' | 'recta' | 'puntos';
+export type TrazoKind = 'onda' | 'zigzag' | 'recta' | 'bucle';
 
 export type LienzoKind = '1080x1080' | '1920x1080' | '1080x1920' | '1080x1440';
 
@@ -163,10 +163,10 @@ export const PRESETS: Preset[] = [
     params: { caudal: 300, calado: 1.2, marea: 30, corriente: 15, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoCapas: 3, retratoDetalle: 60, retratoRelieve: 45, retratoContraste: 55, semilla: 2049 },
   },
   {
-    nombre: 'Rotograbado',
-    descripcion: 'Punteado (stipple) tipo £20 Turner',
+    nombre: 'Buril',
+    descripcion: 'Rizos de buril que crecen en la sombra (pelo del billete)',
     mode: 'retrato',
-    params: { caudal: 300, calado: 1.4, marea: 25, corriente: 10, curso: 0, orillas: 4, retratoTrazo: 'puntos', retratoCapas: 1, retratoDetalle: 50, retratoRelieve: 30, retratoContraste: 50, semilla: 2049 },
+    params: { caudal: 220, calado: 1.2, marea: 55, corriente: 10, curso: 0, orillas: 4, retratoTrazo: 'bucle', retratoCapas: 2, retratoDetalle: 55, retratoRelieve: 40, retratoContraste: 52, semilla: 2049 },
   },
   {
     nombre: 'Topográfico',
@@ -303,7 +303,8 @@ export function coerceParams(input: unknown): TornoParams {
   num('motionSegundos', { min: 1, max: 15, step: 1 });
   if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;
   if (o.lienzo === '1080x1080' || o.lienzo === '1920x1080' || o.lienzo === '1080x1920' || o.lienzo === '1080x1440') p.lienzo = o.lienzo;
-  if (o.retratoTrazo === 'onda' || o.retratoTrazo === 'zigzag' || o.retratoTrazo === 'recta' || o.retratoTrazo === 'puntos') p.retratoTrazo = o.retratoTrazo;
+  if (o.retratoTrazo === 'onda' || o.retratoTrazo === 'zigzag' || o.retratoTrazo === 'recta' || o.retratoTrazo === 'bucle') p.retratoTrazo = o.retratoTrazo;
+  else if (o.retratoTrazo === 'puntos') p.retratoTrazo = 'bucle'; // compat: puntos retirado
   if (o.retratoFit === 'cubrir' || o.retratoFit === 'entera') p.retratoFit = o.retratoFit;
   if (typeof o.retratoCapas === 'number' && Number.isFinite(o.retratoCapas)) p.retratoCapas = Math.min(3, Math.max(1, Math.round(o.retratoCapas)));
   // Compat: recetas antiguas con retratoCruzada (boolean).

@@ -576,7 +576,7 @@ function buildPanel(): void {
   // RETRATO (solo modo retrato)
   if (mode === 'retrato') {
     const trazoWrap = el('div', 'seg');
-    const trazos: [TrazoKind, string][] = [['onda', 'ONDA'], ['zigzag', 'ZIGZAG'], ['recta', 'RECTA'], ['puntos', 'PUNTOS']];
+    const trazos: [TrazoKind, string][] = [['onda', 'ONDA'], ['zigzag', 'ZIGZAG'], ['recta', 'RECTA'], ['bucle', 'BUCLE']];
     trazos.forEach(([k, label]) => {
       const b = el('button', params.retratoTrazo === k ? 'active' : '', label) as HTMLButtonElement;
       b.addEventListener('click', () => {
