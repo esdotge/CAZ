@@ -3,7 +3,7 @@
  * el comentario dice qué controla técnicamente. Ver spec §3.
  */
 
-export type Mode = 'patron' | 'retrato' | 'forma';
+export type Mode = 'patron' | 'retrato' | 'forma' | 'symbol';
 
 export interface TornoParams {
   // --- núcleo de flujo (compartido por los 3 modos) ---
@@ -32,6 +32,15 @@ export interface TornoParams {
   formaLetra: string; // texto del contenedor LETRA (1–4 caracteres)
   formaBorde: boolean; // contornea el contenedor con la tinta (sellos/insignias)
 
+  // --- modo SÍMBOLO ---
+  symTipo: SymbolKind;   // arquetipo del símbolo
+  symLineas: number;     // 2–12 líneas
+  symGrosor: number;     // 5–100, grosor relativo al paso
+  symCurva: number;      // 0–100, ondulación / apertura / barrido
+  symEscala: number;     // 30–90, % del lado menor del lienzo
+  symGiro: number;       // 0–360°, rotación del símbolo
+  symRemate: RemateKind; // terminal del trazo
+
   // --- modo RETRATO ---
   retratoTrazo: TrazoKind;   // forma de la línea de grabado
   retratoCapas: number;      // 1–3 capas de trama: cruzadas progresivas en medios/sombras
@@ -47,6 +56,10 @@ export interface TornoParams {
 }
 
 export type FitKind = 'cubrir' | 'entera';
+
+export type SymbolKind = 'onda' | 'abanico' | 'ala' | 'arcos' | 'cruce';
+
+export type RemateKind = 'romo' | 'recto';
 
 export type TrazoKind = 'onda' | 'zigzag' | 'recta' | 'puntos';
 
@@ -76,6 +89,13 @@ export const DEFAULTS: TornoParams = {
   formaPath: '',
   formaLetra: 'C',
   formaBorde: false,
+  symTipo: 'onda',
+  symLineas: 5,
+  symGrosor: 55,
+  symCurva: 55,
+  symEscala: 62,
+  symGiro: 0,
+  symRemate: 'romo',
   colorFondo: '#F6F4EF',
   colorTinta: '#101012',
   colorDeriva: '#177E70',
@@ -153,6 +173,11 @@ export const RANGES: Record<string, Range> = {
   retratoExposicion: { min: -100, max: 100, step: 1, unit: '' },
   retratoContraste:  { min: 0,   max: 100, step: 1, unit: '' },
   retratoZoom:       { min: 1,   max: 4,   step: 0.05, unit: '×' },
+  symLineas: { min: 2,  max: 12,  step: 1, unit: '' },
+  symGrosor: { min: 5,  max: 100, step: 1, unit: '' },
+  symCurva:  { min: 0,  max: 100, step: 1, unit: '' },
+  symEscala: { min: 30, max: 90,  step: 1, unit: '%' },
+  symGiro:   { min: 0,  max: 360, step: 1, unit: '°' },
 };
 
 /** Gamas cromáticas predefinidas — puntos de partida, no límites (v0). */
@@ -215,6 +240,13 @@ export function coerceParams(input: unknown): TornoParams {
   if (typeof o.formaPath === 'string') p.formaPath = o.formaPath;
   if (typeof o.formaLetra === 'string' && o.formaLetra.trim()) p.formaLetra = o.formaLetra.trim().slice(0, 4);
   if (typeof o.formaBorde === 'boolean') p.formaBorde = o.formaBorde;
+  if (o.symTipo === 'onda' || o.symTipo === 'abanico' || o.symTipo === 'ala' || o.symTipo === 'arcos' || o.symTipo === 'cruce') p.symTipo = o.symTipo;
+  if (o.symRemate === 'romo' || o.symRemate === 'recto') p.symRemate = o.symRemate;
+  num('symLineas', RANGES.symLineas);
+  num('symGrosor', RANGES.symGrosor);
+  num('symCurva', RANGES.symCurva);
+  num('symEscala', RANGES.symEscala);
+  num('symGiro', RANGES.symGiro);
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;
   num('motionSegundos', { min: 1, max: 15, step: 1 });
   if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;

@@ -37,6 +37,12 @@ Abre `http://localhost:5173`.
   píldora, arco, rombo, **LETRA** (hasta 4 caracteres — monogramas, «CAZ»…) o un
   `path` SVG pegado por ti. Toggle **BORDE** para contornear el contenedor con la
   tinta (sellos, insignias). Para iconos y assets de sistema.
+- **SÍMBOLO** — la síntesis total del guilloché: pocas líneas, trazo grueso,
+  dirección clara, para logos e iconos. Cinco arquetipos parametrizados y
+  sembrados: **ONDA** (marca de bandera), **ABANICO** (creciente de arcos),
+  **ALA** (haz radial), **ARCOS** (puerta anidada) y **CRUCE** (tejido con calado
+  de papel). Controles: LÍNEAS, GROSOR, CURVA, ESCALA, GIRO y REMATE (romo/recto).
+  El dado 🎲 explora variaciones de la misma plantilla; MOVIMIENTO anima la onda.
 
 ## Vocabulario de parámetros
 

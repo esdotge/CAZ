@@ -1,11 +1,13 @@
 import './style.css';
 import {
   DEFAULTS, GAMAS, PRESETS, RANGES, coerceParams, isHex, lienzoDims,
-  type LienzoKind, type Mode, type ShapeKind, type TornoParams, type TrazoKind, type View,
+  type LienzoKind, type Mode, type RemateKind, type ShapeKind, type SymbolKind,
+  type TornoParams, type TrazoKind, type View,
 } from './engine/params';
 import { FlowEngine, lineToPath, type Line } from './engine/field';
 import { shapePath } from './engine/shape';
 import { renderPortrait, renderPortraitTo, portraitLayout } from './engine/portrait';
+import { buildSymbol, drawSymbolFrame } from './engine/symbol';
 import { drawPatternFrame, FORMA_FONT, FORMA_FONT_BASE, type FrameShape } from './engine/render-canvas';
 import {
   exportSVG, exportPNG, presetJSON, exportWebM, exportGIF, webmSupported,
@@ -136,6 +138,20 @@ function render(): void {
     return;
   }
 
+  if (mode === 'symbol') {
+    const strokes = buildSymbol(params, view, animTime);
+    const cap = params.symRemate === 'recto' ? 'butt' : 'round';
+    let s = '';
+    for (const st of strokes) {
+      if (st.casing) {
+        s += `<path d="${st.d}" fill="none" stroke="${paper}" stroke-width="${(st.width * 1.6).toFixed(2)}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
+      }
+      s += `<path d="${st.d}" fill="none" stroke="${ink}" stroke-width="${st.width.toFixed(2)}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
+    }
+    svg.innerHTML = s;
+    return;
+  }
+
   const { main, moire } = engine.generate(params, animTime, view);
 
   if (mode === 'patron') {
@@ -224,6 +240,11 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   retratoExposicion: { name: 'EXPOSICIÓN', desc: 'Brillo global de la foto' },
   retratoContraste: { name: 'CONTRASTE', desc: 'Refuerza la lectura de grabado' },
   retratoZoom: { name: 'ENCUADRE', desc: 'Escala de la foto — arrastra el lienzo para recolocarla' },
+  symLineas: { name: 'LÍNEAS', desc: 'Cuántos trazos componen el símbolo' },
+  symGrosor: { name: 'GROSOR', desc: 'Peso del trazo respecto al paso' },
+  symCurva: { name: 'CURVA', desc: 'Ondulación / apertura / barrido del arquetipo' },
+  symEscala: { name: 'ESCALA', desc: 'Tamaño del símbolo en el lienzo' },
+  symGiro: { name: 'GIRO', desc: 'Rotación del símbolo completo' },
 };
 
 function slider(key: keyof TornoParams): HTMLElement {
@@ -299,10 +320,50 @@ function buildPanel(): void {
   panel.appendChild(group('Presets de fábrica', [presetWrap]));
 
   // FLUJO
+  // SÍMBOLO tiene su propio vocabulario; FLUJO y LÍNEA no aplican.
+  if (mode === 'symbol') {
+    const tipoWrap = el('div', 'seg');
+    const tipos: [SymbolKind, string][] = [
+      ['onda', 'ONDA'], ['abanico', 'ABANICO'], ['ala', 'ALA'], ['arcos', 'ARCOS'], ['cruce', 'CRUCE'],
+    ];
+    tipos.forEach(([k, label]) => {
+      const b = el('button', params.symTipo === k ? 'active' : '', label) as HTMLButtonElement;
+      b.addEventListener('click', () => {
+        params.symTipo = k;
+        tipoWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        refreshJSON(); render();
+      });
+      tipoWrap.appendChild(b);
+    });
+
+    const remateWrap = el('div', 'seg');
+    ([['romo', 'REMATE ROMO'], ['recto', 'REMATE RECTO']] as [RemateKind, string][]).forEach(([k, label]) => {
+      const b = el('button', params.symRemate === k ? 'active' : '', label) as HTMLButtonElement;
+      b.addEventListener('click', () => {
+        params.symRemate = k;
+        remateWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        refreshJSON(); render();
+      });
+      remateWrap.appendChild(b);
+    });
+
+    panel.appendChild(group('Símbolo', [
+      tipoWrap,
+      slider('symLineas'), slider('symGrosor'), slider('symCurva'),
+      slider('symEscala'), slider('symGiro'),
+      remateWrap,
+      el('div', 'hint-inline', 'Pocas líneas, trazo claro: la síntesis del guilloché. Tira del dado 🎲 para explorar variaciones de la misma plantilla.'),
+    ]));
+  }
+
+  if (mode !== 'symbol') {
   panel.appendChild(group('Flujo', [slider('curso'), slider('caudal'), slider('cauce'), slider('corriente')]));
 
   // LÍNEA
   panel.appendChild(group('Línea', [slider('calado'), slider('marea'), slider('orillas'), slider('deriva')]));
+  }
 
   // SEMILLA
   const seedRow = el('div', 'row');
@@ -618,6 +679,12 @@ async function runMotionExport(kind: 'webm' | 'gif', btn: HTMLButtonElement, don
       paper: params.colorFondo,
       inks: [params.colorTinta],
     };
+  } else if (mode === 'symbol') {
+    src = {
+      draw: (ctx, W, H, phase) => drawSymbolFrame(ctx, W, H, params, view, phase),
+      paper: params.colorFondo,
+      inks: [params.colorTinta],
+    };
   } else {
     const shape = currentShape();
     const inks = params.deriva > 0.01 && params.colorDeriva !== params.colorTinta
@@ -660,7 +727,7 @@ function applyJSON(text: string): void {
   const m = (obj as any)?.mode;
   params = next;
   engine = new FlowEngine(params.semilla);
-  if (m === 'patron' || m === 'retrato' || m === 'forma') setMode(m, false);
+  if (m === 'patron' || m === 'retrato' || m === 'forma' || m === 'symbol') setMode(m, false);
   applyCanvasSize();
   buildPanel(); syncAnim(); render();
 }
