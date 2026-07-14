@@ -636,7 +636,7 @@ function buildPanel(): void {
       slider('retratoDetalle'), slider('retratoRelieve'),
       slider('retratoExposicion'), slider('retratoContraste'),
       invToggle, loadBtn,
-      el('div', 'hint-inline', 'Arrastra una foto al lienzo y muévela arrastrando sobre él (ENCUADRE la escala). CURSO inclina la trama — cubre todo el lienzo a cualquier ángulo. Sube CAUDAL (250–350) para grano de billete.'),
+      el('div', 'hint-inline', 'Arrastra una foto al lienzo y muévela arrastrando sobre él (ENCUADRE la escala). CURSO inclina la trama; CAUCE comprime la densidad y hace serpentear el canal; DERIVA añade una 2ª trama rotada con su color (moiré de billete). Sube CAUDAL (250–350) para grano fino.'),
     ]));
   }
 
@@ -686,10 +686,13 @@ async function runMotionExport(kind: 'webm' | 'gif', btn: HTMLButtonElement, don
   let src: MotionSource;
   if (mode === 'retrato') {
     const img = portraitImg!;
+    const inks = params.deriva > 0.01 && params.colorDeriva !== params.colorTinta
+      ? [params.colorTinta, params.colorDeriva]
+      : [params.colorTinta];
     src = {
       draw: (ctx, W, H, phase) => renderPortraitTo(ctx, W, H, img, params, phase),
       paper: params.colorFondo,
-      inks: [params.colorTinta],
+      inks,
     };
   } else if (mode === 'symbol') {
     src = {

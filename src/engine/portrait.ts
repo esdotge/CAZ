@@ -190,6 +190,13 @@ export function renderPortraitTo(
   const maxAmp = spacing * 0.9 * (p.marea / 100);
   const reliefAmt = (p.retratoRelieve / 100) * spacing * 6;
 
+  // --- CAUCE: compresión de trama + meandro del canal (la firma) ---
+  // k>1 aprieta las líneas hacia el centro del barrido y las abre a los
+  // bordes; el grosor se compensa con el paso local para conservar el tono.
+  const kCauce = 1 + (p.cauce / 100) * 0.9;
+  const chAmp = (p.cauce / 100) * Math.min(CW, CH) * 0.10;
+  const chan = new SimplexNoise((p.semilla ^ 0x9e3779b9) >>> 0);
+
   // --- campo de flujo: deriva circular (loop perfecto) o libre ---
   const flow = new SimplexNoise(p.semilla);
   const driftAmp = spacing * 2.2 * (p.corriente / 100);
@@ -232,7 +239,7 @@ export function renderPortraitTo(
     noiseOff: number,
     withWave: boolean,
     dots: boolean,
-    getHalf: (dark: number, taper: number) => number,
+    getHalf: (dark: number, taper: number, pitch: number) => number,
   ): void => {
     const ux = Math.cos(thetaRad), uy = Math.sin(thetaRad);
     const nvx = -uy, nvy = ux; // normal a la línea
@@ -244,7 +251,17 @@ export function renderPortraitTo(
     const stepS = dots ? spacing * 0.92 : Math.max(CW / 1400, spacing / 4);
 
     for (let li = 0; li < nSweep; li++) {
-      const c0 = -halfExt + spacing * (li + 0.5);
+      const cRaw = -halfExt + spacing * (li + 0.5);
+      // CAUCE: warp de densidad — compresión al centro, apertura a los bordes
+      let c0 = cRaw;
+      let pitch = spacing;
+      if (kCauce > 1.001) {
+        const uu = Math.max(-1, Math.min(1, cRaw / halfExt));
+        const au = Math.max(Math.abs(uu), 0.02);
+        c0 = Math.sign(uu) * Math.pow(au, kCauce) * halfExt;
+        pitch = Math.max(spacing * 0.35, spacing * kCauce * Math.pow(au, kCauce - 1));
+      }
+      const ampK = pitch / spacing; // la onda escala con el paso local
       let e1: Array<[number, number]> = [];
       let e2: Array<[number, number]> = [];
       if (dots) ctx.beginPath();
@@ -265,8 +282,11 @@ export function renderPortraitTo(
       // tresbolillo: las filas alternas se desplazan media celda (rotograbado)
       const s0 = -halfLen + (dots && li % 2 === 1 ? stepS / 2 : 0);
       for (let s = s0; s <= halfLen; s += stepS) {
-        const bx = ccx + ux * s + nvx * c0;
-        const by = ccy + uy * s + nvy * c0;
+        // CAUCE: meandro del canal — toda la trama serpentea junta
+        const cdef = chAmp > 0.001 ? chan.noise2D(s * 0.0012 + 50, 3.7) * chAmp : 0;
+        const cLine = c0 + cdef;
+        const bx = ccx + ux * s + nvx * cLine;
+        const by = ccy + uy * s + nvy * cLine;
 
         // fuera del área de barrido: corta y sigue
         if (bx < areaX0 || bx > areaX1 || by < areaY0 || by > areaY1) { if (!dots) flush(); continue; }
@@ -302,16 +322,16 @@ export function renderPortraitTo(
         }
 
         const taper = taperAt(sx, sy);
-        const amp = withWave ? maxAmp * dark * taper : 0;
+        const amp = withWave ? maxAmp * ampK * dark * taper : 0;
         const off = off0 + (withWave ? wave(s + halfLen) * amp : 0);
         const px = bx + nvx * off;
         const py = by + nvy * off;
 
-        const half = getHalf(dark, taper);
+        const half = getHalf(dark, taper, pitch);
         if (dots) {
           // stipple: un punto por celda, radio según tono (rotograbado / £20 Turner)
           if (half >= 0.14) {
-            const r = Math.min(half * 1.15, spacing * 0.5);
+            const r = Math.min(half * 1.15, pitch * 0.5);
             ctx.moveTo(px + r, py);
             ctx.arc(px, py, r, 0, 2 * Math.PI);
           }
@@ -330,28 +350,41 @@ export function renderPortraitTo(
   const isDots = p.retratoTrazo === 'puntos';
   const capas = Math.min(3, Math.max(1, Math.round(p.retratoCapas)));
 
-  // ---------- capa 1: trama principal (dirección CURSO) ----------
-  sweep(theta, 0, !isDots, isDots, (dark, taper) => {
-    // anchura AM: espaciado constante, grosor variable, canal blanco garantizado
-    let half = caladoK * (0.10 + 0.90 * dark) * spacing * 0.48;
-    half = Math.min(half, spacing * 0.44);
+  // anchura AM de la trama principal (compartida con la trama de DERIVA)
+  const mainHalf = (dark: number, taper: number, pitch: number): number => {
+    let half = caladoK * (0.10 + 0.90 * dark) * pitch * 0.48;
+    half = Math.min(half, pitch * 0.44);
     half *= smoothstep(0.030, 0.10, dark) * (0.35 + 0.65 * taper); // dropout en luces
     return half;
-  });
+  };
+
+  // ---------- capa 1: trama principal (dirección CURSO) ----------
+  sweep(theta, 0, !isDots, isDots, mainHalf);
+
+  // ---------- DERIVA: 2ª trama del grabado rotada — moiré de billete ----------
+  if (p.deriva > 0.01) {
+    ctx.fillStyle = p.colorDeriva;
+    ctx.globalAlpha = 0.6;
+    const derivaRad = (p.deriva * Math.PI) / 180;
+    sweep(theta + derivaRad, 77.7, !isDots, isDots, (dark, taper, pitch) =>
+      mainHalf(dark, taper, pitch) * 0.85);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = ink;
+  }
 
   // ---------- capa 2: cruzada perpendicular — entra en medios tonos ----------
   if (capas >= 2) {
-    sweep(theta + Math.PI / 2, 31.7, false, false, (dark, taper) => {
+    sweep(theta + Math.PI / 2, 31.7, false, false, (dark, taper, pitch) => {
       const presence = smoothstep(0.42, 0.78, dark);
-      return Math.min(caladoK * spacing * 0.34 * presence * taper, spacing * 0.30);
+      return Math.min(caladoK * pitch * 0.34 * presence * taper, pitch * 0.30);
     });
   }
 
   // ---------- capa 3: diagonal — sólo sombras profundas (negro tejido) ----------
   if (capas >= 3) {
-    sweep(theta + Math.PI / 4, 63.9, false, false, (dark, taper) => {
+    sweep(theta + Math.PI / 4, 63.9, false, false, (dark, taper, pitch) => {
       const presence = smoothstep(0.66, 0.94, dark);
-      return Math.min(caladoK * spacing * 0.26 * presence * taper, spacing * 0.24);
+      return Math.min(caladoK * pitch * 0.26 * presence * taper, pitch * 0.24);
     });
   }
 }
