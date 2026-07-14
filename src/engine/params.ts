@@ -154,6 +154,58 @@ export const PRESETS: Preset[] = [
     mode: 'patron',
     params: { curso: 0, caudal: 170, cauce: 45, corriente: 16, calado: 0.9, marea: 26, deriva: 90, orillas: 6, semilla: 5150 },
   },
+
+  // --- RETRATO ---
+  {
+    nombre: 'Billete',
+    descripcion: 'Grabado de banco: 3 capas, detalle alto, grano fino',
+    mode: 'retrato',
+    params: { caudal: 300, calado: 1.2, marea: 30, corriente: 15, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoCapas: 3, retratoDetalle: 60, retratoRelieve: 45, retratoContraste: 55, semilla: 2049 },
+  },
+  {
+    nombre: 'Rotograbado',
+    descripcion: 'Punteado (stipple) tipo £20 Turner',
+    mode: 'retrato',
+    params: { caudal: 300, calado: 1.4, marea: 25, corriente: 10, curso: 0, orillas: 4, retratoTrazo: 'puntos', retratoCapas: 1, retratoDetalle: 50, retratoRelieve: 30, retratoContraste: 50, semilla: 2049 },
+  },
+  {
+    nombre: 'Topográfico',
+    descripcion: 'Línea recta con relieve fuerte — el volumen manda',
+    mode: 'retrato',
+    params: { caudal: 200, calado: 1.6, marea: 20, corriente: 8, curso: 0, orillas: 4, retratoTrazo: 'recta', retratoCapas: 2, retratoDetalle: 40, retratoRelieve: 80, retratoContraste: 50, semilla: 2049 },
+  },
+
+  // --- SÍMBOLO ---
+  {
+    nombre: 'Caudal',
+    descripcion: 'Marca de bandera: cinco ondas en fase',
+    mode: 'symbol',
+    params: { symTipo: 'onda', symLineas: 5, symGrosor: 60, symCurva: 50, symEscala: 62, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+  },
+  {
+    nombre: 'Creciente',
+    descripcion: 'Abanico de arcos que giran y se acortan',
+    mode: 'symbol',
+    params: { symTipo: 'abanico', symLineas: 7, symGrosor: 55, symCurva: 60, symEscala: 64, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+  },
+  {
+    nombre: 'Vuelo',
+    descripcion: 'Haz radial de líneas finas',
+    mode: 'symbol',
+    params: { symTipo: 'ala', symLineas: 11, symGrosor: 22, symCurva: 55, symEscala: 66, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+  },
+  {
+    nombre: 'Puerta',
+    descripcion: 'Arcos anidados, trazo grueso',
+    mode: 'symbol',
+    params: { symTipo: 'arcos', symLineas: 4, symGrosor: 60, symCurva: 45, symEscala: 62, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+  },
+  {
+    nombre: 'Trenza',
+    descripcion: 'Dos caudales tejidos con calado de papel',
+    mode: 'symbol',
+    params: { symTipo: 'cruce', symLineas: 6, symGrosor: 45, symCurva: 40, symEscala: 60, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+  },
 ];
 
 /** Rango declarativo para construir la UI y validar JSON pegado. */

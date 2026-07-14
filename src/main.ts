@@ -309,15 +309,18 @@ function buildPanel(): void {
   });
   panel.appendChild(group('Lienzo', [lienzoWrap]));
 
-  // PRESETS
-  const presetWrap = el('div', 'presets');
-  PRESETS.forEach((pr) => {
-    const b = el('button', 'preset-btn', pr.nombre) as HTMLButtonElement;
-    b.title = pr.descripcion;
-    b.addEventListener('click', () => applyPreset(pr.nombre));
-    presetWrap.appendChild(b);
-  });
-  panel.appendChild(group('Presets de fábrica', [presetWrap]));
+  // PRESETS — sólo las recetas del modo activo (no te sacan de sección)
+  const modePresets = PRESETS.filter((pr) => pr.mode === mode);
+  if (modePresets.length) {
+    const presetWrap = el('div', 'presets');
+    modePresets.forEach((pr) => {
+      const b = el('button', 'preset-btn', pr.nombre) as HTMLButtonElement;
+      b.title = pr.descripcion;
+      b.addEventListener('click', () => applyPreset(pr.nombre));
+      presetWrap.appendChild(b);
+    });
+    panel.appendChild(group('Presets de fábrica', [presetWrap]));
+  }
 
   // FLUJO
   // SÍMBOLO tiene su propio vocabulario; FLUJO y LÍNEA no aplican.
