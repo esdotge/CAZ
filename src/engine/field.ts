@@ -3,6 +3,39 @@ import type { TornoParams, View } from './params';
 
 export interface Line {
   points: Array<[number, number]>;
+  /** ORILLAS: factor de presencia por punto (0 = desaparece, 1 = pleno). */
+  fade?: number[];
+}
+
+/** Niveles de grosor del fundido de orillas (0 = la línea desaparece). */
+export const FADE_WIDTHS = [0, 0.3, 0.55, 0.78, 1] as const;
+
+export function fadeLevel(e: number): number {
+  if (e < 0.08) return 0;
+  if (e >= 0.85) return 4;
+  return 1 + Math.floor(((e - 0.08) / (0.85 - 0.08)) * 3);
+}
+
+/**
+ * Trocea una línea en tramos de nivel de grosor constante (para render con
+ * strokes). Los tramos comparten el punto frontera — sin huecos.
+ */
+export function segmentLine(l: Line): Array<{ lvl: number; pts: Array<[number, number]> }> {
+  if (!l.fade || !l.fade.length) return [{ lvl: FADE_WIDTHS.length - 1, pts: l.points }];
+  const out: Array<{ lvl: number; pts: Array<[number, number]> }> = [];
+  let cur: Array<[number, number]> = [l.points[0]];
+  let curLvl = fadeLevel(l.fade[0]);
+  for (let i = 1; i < l.points.length; i++) {
+    const lvl = fadeLevel(l.fade[i]);
+    cur.push(l.points[i]);
+    if (lvl !== curLvl) {
+      if (curLvl > 0 && cur.length > 1) out.push({ lvl: curLvl, pts: cur });
+      cur = [l.points[i]];
+      curLvl = lvl;
+    }
+  }
+  if (curLvl > 0 && cur.length > 1) out.push({ lvl: curLvl, pts: cur });
+  return out;
 }
 
 /** smoothstep clásico. */
@@ -77,7 +110,14 @@ export class FlowEngine {
     for (let i = 0; i < n; i++) {
       const s = n === 1 ? 0 : (i / (n - 1)) * 2 - 1; // [-1, 1]
       const vBase = Math.sign(s) * Math.pow(Math.abs(s), k) * R;
-      const pts: Array<[number, number]> = [];
+      let pts: Array<[number, number]> = [];
+      let fd: number[] = [];
+
+      const push = (): void => {
+        if (pts.length > 1) lines.push({ points: pts, fade: band > 0.001 ? fd : undefined });
+        pts = [];
+        fd = [];
+      };
 
       for (let u = -R; u <= R; u += du) {
         const deflect = this.channel.noise2D(u * chFreq, 7.3) * chAmp;
@@ -86,7 +126,7 @@ export class FlowEngine {
         const bx = CX + u * dx + v0 * nx;
         const by = CY + u * dy + v0 * ny;
 
-        // Taper de bordes (ORILLAS) en espacio de lienzo.
+        // Zona de calma (ORILLAS) en espacio de lienzo: amansa el campo…
         let taper = 1;
         if (band > 0.001) {
           const de = Math.min(bx, W - bx, by, H - by);
@@ -104,13 +144,17 @@ export class FlowEngine {
 
         // Recorte holgado: el viewBox/clip del SVG afina el borde.
         if (x < -40 || x > W + 40 || y < -40 || y > H + 40) {
-          if (pts.length > 1) { lines.push({ points: pts.slice() }); }
-          pts.length = 0;
+          push();
           continue;
         }
         pts.push([x, y]);
+        // …y funde el grosor: la línea adelgaza y desaparece en el borde.
+        if (band > 0.001) {
+          const de = Math.min(x, W - x, y, H - y);
+          fd.push(smoothstep(0, band, de));
+        }
       }
-      if (pts.length > 1) lines.push({ points: pts });
+      push();
     }
     return lines;
   }

@@ -1,4 +1,4 @@
-import { FlowEngine, type Line } from './field';
+import { FlowEngine, FADE_WIDTHS, segmentLine, type Line } from './field';
 import type { TornoParams, View } from './params';
 
 export const FORMA_FONT = "Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif";
@@ -16,15 +16,23 @@ export interface FrameShape {
   strokeWidth?: number;
 }
 
-function strokeLines(ctx: CanvasRenderingContext2D, lines: Line[]): void {
-  ctx.beginPath();
+/** Traza líneas agrupadas por nivel de grosor (fundido de ORILLAS). */
+function strokeLines(ctx: CanvasRenderingContext2D, lines: Line[], baseWidth: number): void {
+  const byLevel: Array<Path2D | null> = [null, null, null, null, null];
   for (const l of lines) {
-    const p = l.points;
-    if (p.length < 2) continue;
-    ctx.moveTo(p[0][0], p[0][1]);
-    for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+    for (const seg of segmentLine(l)) {
+      if (seg.pts.length < 2) continue;
+      const path = (byLevel[seg.lvl] ??= new Path2D());
+      path.moveTo(seg.pts[0][0], seg.pts[0][1]);
+      for (let i = 1; i < seg.pts.length; i++) path.lineTo(seg.pts[i][0], seg.pts[i][1]);
+    }
   }
-  ctx.stroke();
+  for (let lvl = 1; lvl < FADE_WIDTHS.length; lvl++) {
+    const path = byLevel[lvl];
+    if (!path) continue;
+    ctx.lineWidth = baseWidth * FADE_WIDTHS[lvl];
+    ctx.stroke(path);
+  }
 }
 
 function drawTramas(
@@ -40,13 +48,11 @@ function drawTramas(
   if (moire.length) {
     ctx.strokeStyle = params.colorDeriva;
     ctx.globalAlpha = 0.6;
-    ctx.lineWidth = params.calado * 0.85;
-    strokeLines(ctx, moire);
+    strokeLines(ctx, moire, params.calado * 0.85);
     ctx.globalAlpha = 1;
   }
   ctx.strokeStyle = params.colorTinta;
-  ctx.lineWidth = params.calado;
-  strokeLines(ctx, main);
+  strokeLines(ctx, main, params.calado);
 }
 
 function shapePath2D(shape: FrameShape): Path2D {

@@ -4,7 +4,7 @@ import {
   type LienzoKind, type Mode, type RemateKind, type ShapeKind, type SymbolKind,
   type TornoParams, type TrazoKind, type View,
 } from './engine/params';
-import { FlowEngine, lineToPath, type Line } from './engine/field';
+import { FlowEngine, FADE_WIDTHS, lineToPath, segmentLine, type Line } from './engine/field';
 import { shapePath } from './engine/shape';
 import { renderPortrait, renderPortraitTo, portraitLayout } from './engine/portrait';
 import { buildSymbol, drawSymbolFrame } from './engine/symbol';
@@ -47,13 +47,22 @@ function scheduleRender(): void {
 }
 
 function linesToSVG(lines: Line[], stroke: string, width: number, opacity = 1): string {
-  let s = '';
   const op = opacity < 1 ? ` stroke-opacity="${opacity}"` : '';
+  // ORILLAS: cada línea se trocea en tramos por nivel de grosor; el nivel 0
+  // desaparece — el patrón se funde hacia los bordes manteniendo SVG de trazos.
+  const byLevel: string[] = ['', '', '', '', ''];
   for (const l of lines) {
-    const d = lineToPath(l);
-    if (d) s += `<path d="${d}"/>`;
+    for (const seg of segmentLine(l)) {
+      if (seg.pts.length < 2) continue;
+      byLevel[seg.lvl] += lineToPath({ points: seg.pts });
+    }
   }
-  return `<g fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"${op}>${s}</g>`;
+  let s = '';
+  for (let lvl = 1; lvl < FADE_WIDTHS.length; lvl++) {
+    if (!byLevel[lvl]) continue;
+    s += `<path d="${byLevel[lvl]}" stroke-width="${(width * FADE_WIDTHS[lvl]).toFixed(3)}"/>`;
+  }
+  return `<g fill="none" stroke="${stroke}" stroke-linecap="round" stroke-linejoin="round"${op}>${s}</g>`;
 }
 
 function fitBBox(customPath: string): { tx: number; ty: number; s: number } | null {
