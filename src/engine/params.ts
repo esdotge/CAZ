@@ -61,7 +61,7 @@ export interface TornoParams {
 
 export type FitKind = 'cubrir' | 'entera';
 
-export type SymbolKind = 'onda' | 'abanico' | 'ala' | 'arcos' | 'cruce';
+export type SymbolKind = 'onda' | 'abanico' | 'ala' | 'arcos' | 'cruce' | 'orbita' | 'concha' | 'codo';
 
 export type RemateKind = 'romo' | 'recto';
 
@@ -100,7 +100,7 @@ export const DEFAULTS: TornoParams = {
   symCurva: 55,
   symEscala: 62,
   symGiro: 0,
-  symRemate: 'romo',
+  symRemate: 'recto',
   colorFondo: '#F6F4EF',
   colorTinta: '#101012',
   colorDeriva: '#177E70',
@@ -206,13 +206,13 @@ export const PRESETS: Preset[] = [
     nombre: 'Caudal',
     descripcion: 'Marca de bandera: cinco ondas en fase',
     mode: 'symbol',
-    params: { symTipo: 'onda', symLineas: 5, symGrosor: 60, symCurva: 50, symEscala: 62, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+    params: { symTipo: 'onda', symLineas: 5, symGrosor: 60, symCurva: 50, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Creciente',
     descripcion: 'Abanico de arcos que giran y se acortan',
     mode: 'symbol',
-    params: { symTipo: 'abanico', symLineas: 7, symGrosor: 55, symCurva: 60, symEscala: 64, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+    params: { symTipo: 'abanico', symLineas: 7, symGrosor: 55, symCurva: 60, symEscala: 64, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Vuelo',
@@ -224,13 +224,31 @@ export const PRESETS: Preset[] = [
     nombre: 'Puerta',
     descripcion: 'Arcos anidados, trazo grueso',
     mode: 'symbol',
-    params: { symTipo: 'arcos', symLineas: 4, symGrosor: 60, symCurva: 45, symEscala: 62, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+    params: { symTipo: 'arcos', symLineas: 4, symGrosor: 60, symCurva: 45, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Trenza',
     descripcion: 'Dos caudales tejidos con calado de papel',
     mode: 'symbol',
-    params: { symTipo: 'cruce', symLineas: 6, symGrosor: 45, symCurva: 40, symEscala: 60, symGiro: 0, symRemate: 'romo', semilla: 2049 },
+    params: { symTipo: 'cruce', symLineas: 6, symGrosor: 45, symCurva: 40, symEscala: 60, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+  },
+  {
+    nombre: 'Órbita',
+    descripcion: 'Elipses que giran alrededor del centro — esfera de líneas',
+    mode: 'symbol',
+    params: { symTipo: 'orbita', symLineas: 6, symGrosor: 30, symCurva: 45, symEscala: 66, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+  },
+  {
+    nombre: 'Concha',
+    descripcion: 'Elipses ancladas a la base que crecen e inclinan',
+    mode: 'symbol',
+    params: { symTipo: 'concha', symLineas: 7, symGrosor: 28, symCurva: 55, symEscala: 64, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+  },
+  {
+    nombre: 'Cinta',
+    descripcion: 'Franjas gruesas que doblan el codo — vertical a horizontal',
+    mode: 'symbol',
+    params: { symTipo: 'codo', symLineas: 4, symGrosor: 62, symCurva: 30, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
 ];
 
@@ -326,7 +344,8 @@ export function coerceParams(input: unknown): TornoParams {
   if (typeof o.formaPath === 'string') p.formaPath = o.formaPath;
   if (typeof o.formaLetra === 'string' && o.formaLetra.trim()) p.formaLetra = o.formaLetra.trim().slice(0, 4);
   if (typeof o.formaBorde === 'boolean') p.formaBorde = o.formaBorde;
-  if (o.symTipo === 'onda' || o.symTipo === 'abanico' || o.symTipo === 'ala' || o.symTipo === 'arcos' || o.symTipo === 'cruce') p.symTipo = o.symTipo;
+  if (o.symTipo === 'onda' || o.symTipo === 'abanico' || o.symTipo === 'ala' || o.symTipo === 'arcos'
+    || o.symTipo === 'cruce' || o.symTipo === 'orbita' || o.symTipo === 'concha' || o.symTipo === 'codo') p.symTipo = o.symTipo;
   if (o.symRemate === 'romo' || o.symRemate === 'recto') p.symRemate = o.symRemate;
   num('symLineas', RANGES.symLineas);
   num('symGrosor', RANGES.symGrosor);

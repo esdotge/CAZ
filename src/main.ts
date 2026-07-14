@@ -340,7 +340,8 @@ function buildPanel(): void {
   if (mode === 'symbol') {
     const tipoWrap = el('div', 'seg');
     const tipos: [SymbolKind, string][] = [
-      ['onda', 'ONDA'], ['abanico', 'ABANICO'], ['ala', 'ALA'], ['arcos', 'ARCOS'], ['cruce', 'CRUCE'],
+      ['onda', 'ONDA'], ['abanico', 'ABANICO'], ['ala', 'ALA'], ['arcos', 'ARCOS'],
+      ['cruce', 'CRUCE'], ['orbita', 'ÓRBITA'], ['concha', 'CONCHA'], ['codo', 'CODO'],
     ];
     tipos.forEach(([k, label]) => {
       const b = el('button', params.symTipo === k ? 'active' : '', label) as HTMLButtonElement;

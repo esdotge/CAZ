@@ -154,6 +154,83 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
       break;
     }
 
+    // ---------------- ÓRBITA: elipses que giran — esfera de líneas ----------------
+    case 'orbita': {
+      const a = S * 0.48;
+      const b = a * (0.22 + A * 0.4);
+      const base = rnd() * Math.PI;
+      const width = Math.max(S * 0.006, S * 0.024 * G);
+      const step = Math.PI / n;
+      for (let i = 0; i < n; i++) {
+        // rotar 1 paso por ciclo: la elipse i ocupa el lugar de la i+1 → loop sin costura
+        const phi = base + i * step + phase * step;
+        const cosP = Math.cos(phi), sinP = Math.sin(phi);
+        const pts: Array<[number, number]> = [];
+        const steps = 84;
+        for (let j = 0; j <= steps; j++) {
+          const t = (j / steps) * TAU;
+          const ex = a * Math.cos(t), ey = b * Math.sin(t);
+          pts.push(pt(ex * cosP - ey * sinP, ex * sinP + ey * cosP));
+        }
+        strokes.push({ d: pathFrom(pts) + 'Z', width });
+      }
+      break;
+    }
+
+    // ---------------- CONCHA: elipses ancladas que crecen e inclinan ----------------
+    case 'concha': {
+      const ax = -S * 0.05, ay = S * 0.36; // ancla común en la base
+      const maxTilt = ((20 + A * 45) * Math.PI) / 180;
+      const width = Math.max(S * 0.006, S * 0.022 * G);
+      const sway = Math.sin(TAU * phase) * 0.05;
+      for (let i = 0; i < n; i++) {
+        const t = n > 1 ? i / (n - 1) : 1;
+        const a = S * (0.2 + 0.36 * t);
+        const b = a * (0.5 + rnd() * 0.06);
+        const phi = t * maxTilt + sway * t; // inclina hacia arriba-derecha (NE)
+        const cosP = Math.cos(phi), sinP = Math.sin(phi);
+        // el punto inferior de la elipse cae siempre en el ancla
+        const cx0 = ax + sinP * b;
+        const cy0 = ay - cosP * b;
+        const pts: Array<[number, number]> = [];
+        const steps = 80;
+        for (let j = 0; j <= steps; j++) {
+          const tt = (j / steps) * TAU;
+          const ex = a * Math.cos(tt), ey = b * Math.sin(tt);
+          pts.push(pt(cx0 + ex * cosP - ey * sinP, cy0 + ex * sinP + ey * cosP));
+        }
+        strokes.push({ d: pathFrom(pts) + 'Z', width });
+      }
+      // línea base: el suelo del que nace la concha
+      strokes.push({ d: pathFrom([pt(ax - S * 0.3, ay), pt(ax + S * 0.52, ay)]), width });
+      break;
+    }
+
+    // ---------------- CODO: franjas que doblan de vertical a horizontal ----------------
+    case 'codo': {
+      const px0 = -S * 0.11, py0 = S * 0.12; // pivote del codo (marca equilibrada)
+      const r0 = S * 0.09;
+      const rMax = S * 0.44;
+      const pitch = n > 1 ? (rMax - r0) / (n - 1) : rMax - r0;
+      const width = Math.min(pitch * 0.9, Math.max(pitch, 3) * G * 1.3);
+      const xR = S * 0.55;                  // borde derecho común
+      const legDown = S * (0.06 + A * 0.2); // pata inferior
+      const sway = Math.sin(TAU * phase) * 0.02;
+      for (let i = 0; i < n; i++) {
+        const r = r0 + i * pitch;
+        const pts: Array<[number, number]> = [];
+        pts.push(pt(px0 - r, py0 + legDown));
+        const steps = 28;
+        for (let j = 0; j <= steps; j++) {
+          const th = Math.PI + (j / steps) * (Math.PI / 2) + sway;
+          pts.push(pt(px0 + r * Math.cos(th), py0 + r * Math.sin(th)));
+        }
+        pts.push(pt(xR, py0 - r));
+        strokes.push({ d: pathFrom(pts), width });
+      }
+      break;
+    }
+
     // ---------------- CRUCE: dos caudales tejidos ----------------
     case 'cruce':
     default: {
