@@ -152,10 +152,11 @@ function render(): void {
     const cap = params.symRemate === 'recto' ? 'butt' : 'round';
     let s = '';
     for (const st of strokes) {
-      if (st.casing) {
+      if (st.casing && !st.paper) {
         s += `<path d="${st.d}" fill="none" stroke="${paper}" stroke-width="${(st.width * 1.6).toFixed(2)}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
       }
-      s += `<path d="${st.d}" fill="none" stroke="${ink}" stroke-width="${st.width.toFixed(2)}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
+      const color = st.paper ? paper : ink;
+      s += `<path d="${st.d}" fill="none" stroke="${color}" stroke-width="${st.width.toFixed(2)}" stroke-linecap="${cap}" stroke-linejoin="round"/>`;
     }
     svg.innerHTML = s;
     return;
@@ -253,11 +254,20 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   retratoExposicion: { name: 'EXPOSICIÓN', desc: 'Brillo global de la foto' },
   retratoContraste: { name: 'CONTRASTE', desc: 'Refuerza la lectura de grabado' },
   retratoZoom: { name: 'ENCUADRE', desc: 'Escala de la foto — arrastra el lienzo para recolocarla' },
-  symLineas: { name: 'LÍNEAS', desc: 'Cuántos trazos componen el símbolo' },
+  symLineas: { name: 'LÍNEAS', desc: 'Cuántos trazos componen la capa' },
   symGrosor: { name: 'GROSOR', desc: 'Peso del trazo respecto al paso' },
   symCurva: { name: 'CURVA', desc: 'Ondulación / apertura / barrido del arquetipo' },
-  symEscala: { name: 'ESCALA', desc: 'Tamaño del símbolo en el lienzo' },
-  symGiro: { name: 'GIRO', desc: 'Rotación del símbolo completo' },
+  symEscala: { name: 'ESCALA', desc: 'Tamaño de la capa en el lienzo' },
+  symGiro: { name: 'GIRO', desc: 'Rotación de la capa' },
+  symX: { name: 'POSICIÓN X', desc: 'Desplaza la capa en horizontal' },
+  symY: { name: 'POSICIÓN Y', desc: 'Desplaza la capa en vertical' },
+  symBLineas: { name: 'LÍNEAS B', desc: 'Trazos de la capa B' },
+  symBGrosor: { name: 'GROSOR B', desc: 'Peso del trazo de la capa B' },
+  symBCurva: { name: 'CURVA B', desc: 'Ondulación / apertura de la capa B' },
+  symBEscala: { name: 'ESCALA B', desc: 'Tamaño de la capa B' },
+  symBGiro: { name: 'GIRO B', desc: 'Rotación de la capa B' },
+  symBX: { name: 'POSICIÓN X B', desc: 'Desplaza la capa B en horizontal' },
+  symBY: { name: 'POSICIÓN Y B', desc: 'Desplaza la capa B en vertical' },
 };
 
 function slider(key: keyof TornoParams): HTMLElement {
@@ -338,21 +348,24 @@ function buildPanel(): void {
   // FLUJO
   // SÍMBOLO tiene su propio vocabulario; FLUJO y LÍNEA no aplican.
   if (mode === 'symbol') {
-    const tipoWrap = el('div', 'seg');
-    const tipos: [SymbolKind, string][] = [
+    const TIPOS: [SymbolKind, string][] = [
       ['onda', 'ONDA'], ['abanico', 'ABANICO'], ['ala', 'ALA'], ['arcos', 'ARCOS'],
-      ['cruce', 'CRUCE'], ['orbita', 'ÓRBITA'], ['concha', 'CONCHA'], ['codo', 'CODO'],
+      ['cruce', 'CRUCE'], ['orbita', 'ÓRBITA'], ['concha', 'CONCHA'], ['codo', 'CODO'], ['aro', 'ARO / C'],
     ];
-    tipos.forEach(([k, label]) => {
-      const b = el('button', params.symTipo === k ? 'active' : '', label) as HTMLButtonElement;
-      b.addEventListener('click', () => {
-        params.symTipo = k;
-        tipoWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
-        b.classList.add('active');
-        refreshJSON(); render();
+    const tipoSeg = (key: 'symTipo' | 'symBTipo'): HTMLElement => {
+      const wrap = el('div', 'seg');
+      TIPOS.forEach(([k, label]) => {
+        const b = el('button', params[key] === k ? 'active' : '', label) as HTMLButtonElement;
+        b.addEventListener('click', () => {
+          params[key] = k;
+          wrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          refreshJSON(); render();
+        });
+        wrap.appendChild(b);
       });
-      tipoWrap.appendChild(b);
-    });
+      return wrap;
+    };
 
     const remateWrap = el('div', 'seg');
     ([['romo', 'REMATE ROMO'], ['recto', 'REMATE RECTO']] as [RemateKind, string][]).forEach(([k, label]) => {
@@ -366,13 +379,40 @@ function buildPanel(): void {
       remateWrap.appendChild(b);
     });
 
-    panel.appendChild(group('Símbolo', [
-      tipoWrap,
+    panel.appendChild(group('Símbolo · capa A', [
+      tipoSeg('symTipo'),
       slider('symLineas'), slider('symGrosor'), slider('symCurva'),
-      slider('symEscala'), slider('symGiro'),
+      slider('symEscala'), slider('symGiro'), slider('symX'), slider('symY'),
       remateWrap,
-      el('div', 'hint-inline', 'Pocas líneas, trazo claro: la síntesis del guilloché. Tira del dado 🎲 para explorar variaciones de la misma plantilla.'),
+      el('div', 'hint-inline', 'Pocas líneas, trazo claro: la síntesis del guilloché. El dado 🎲 explora variaciones.'),
     ]));
+
+    // CAPA B — combinar arquetipos; contraforma = espacio negativo
+    const capaBToggle = makeToggle('CAPA B (COMBINAR)', params.symB, (on) => {
+      params.symB = on; refreshJSON(); buildPanel(); render();
+    });
+    const capaBChildren: HTMLElement[] = [capaBToggle];
+    if (params.symB) {
+      const modoWrap = el('div', 'seg');
+      ([['tinta', 'TINTA'], ['contraforma', 'CONTRAFORMA']] as ['tinta' | 'contraforma', string][]).forEach(([k, label]) => {
+        const b = el('button', params.symBModo === k ? 'active' : '', label) as HTMLButtonElement;
+        b.addEventListener('click', () => {
+          params.symBModo = k;
+          modoWrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
+          b.classList.add('active');
+          refreshJSON(); render();
+        });
+        modoWrap.appendChild(b);
+      });
+      capaBChildren.push(
+        tipoSeg('symBTipo'),
+        modoWrap,
+        slider('symBLineas'), slider('symBGrosor'), slider('symBCurva'),
+        slider('symBEscala'), slider('symBGiro'), slider('symBX'), slider('symBY'),
+        el('div', 'hint-inline', 'CONTRAFORMA pinta con el color del papel: talla espacio negativo sobre la capa A (forma y contraforma).'),
+      );
+    }
+    panel.appendChild(group('Símbolo · capa B', capaBChildren));
   }
 
   if (mode !== 'symbol') {

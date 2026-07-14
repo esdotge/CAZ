@@ -33,14 +33,28 @@ export interface TornoParams {
   formaLetra: string; // texto del contenedor LETRA (1–4 caracteres)
   formaBorde: boolean; // contornea el contenedor con la tinta (sellos/insignias)
 
-  // --- modo SÍMBOLO ---
+  // --- modo SÍMBOLO (capa A) ---
   symTipo: SymbolKind;   // arquetipo del símbolo
-  symLineas: number;     // 2–12 líneas
+  symLineas: number;     // 1–12 líneas
   symGrosor: number;     // 5–100, grosor relativo al paso
   symCurva: number;      // 0–100, ondulación / apertura / barrido
   symEscala: number;     // 30–90, % del lado menor del lienzo
   symGiro: number;       // 0–360°, rotación del símbolo
-  symRemate: RemateKind; // terminal del trazo
+  symX: number;          // -50..50, posición horizontal de la capa
+  symY: number;          // -50..50, posición vertical de la capa
+  symRemate: RemateKind; // terminal del trazo (ambas capas)
+
+  // --- modo SÍMBOLO (capa B, combinable) ---
+  symB: boolean;         // activa la 2ª capa
+  symBTipo: SymbolKind;
+  symBLineas: number;
+  symBGrosor: number;
+  symBCurva: number;
+  symBEscala: number;    // 15–90
+  symBGiro: number;
+  symBX: number;
+  symBY: number;
+  symBModo: CapaModo;    // tinta = suma; contraforma = talla espacio negativo
 
   // --- modo RETRATO ---
   retratoTrazo: TrazoKind;   // forma de la línea de grabado
@@ -61,9 +75,11 @@ export interface TornoParams {
 
 export type FitKind = 'cubrir' | 'entera';
 
-export type SymbolKind = 'onda' | 'abanico' | 'ala' | 'arcos' | 'cruce' | 'orbita' | 'concha' | 'codo';
+export type SymbolKind = 'onda' | 'abanico' | 'ala' | 'arcos' | 'cruce' | 'orbita' | 'concha' | 'codo' | 'aro';
 
 export type RemateKind = 'romo' | 'recto';
+
+export type CapaModo = 'tinta' | 'contraforma';
 
 export type TrazoKind = 'onda' | 'zigzag' | 'recta' | 'bucle';
 
@@ -100,7 +116,19 @@ export const DEFAULTS: TornoParams = {
   symCurva: 55,
   symEscala: 62,
   symGiro: 0,
+  symX: 0,
+  symY: 0,
   symRemate: 'recto',
+  symB: false,
+  symBTipo: 'onda',
+  symBLineas: 3,
+  symBGrosor: 45,
+  symBCurva: 50,
+  symBEscala: 40,
+  symBGiro: 0,
+  symBX: 0,
+  symBY: 0,
+  symBModo: 'tinta',
   colorFondo: '#F6F4EF',
   colorTinta: '#101012',
   colorDeriva: '#177E70',
@@ -250,6 +278,24 @@ export const PRESETS: Preset[] = [
     mode: 'symbol',
     params: { symTipo: 'codo', symLineas: 4, symGrosor: 62, symCurva: 30, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
+  {
+    nombre: 'Ojo',
+    descripcion: 'Anillo + ondas que lo cruzan — la mirada del cauce',
+    mode: 'symbol',
+    params: { symTipo: 'aro', symLineas: 1, symGrosor: 24, symCurva: 0, symEscala: 62, symGiro: 0, symX: 0, symY: 0, symRemate: 'recto', symB: true, symBTipo: 'onda', symBLineas: 3, symBGrosor: 26, symBCurva: 50, symBEscala: 46, symBGiro: 0, symBX: 0, symBY: 0, symBModo: 'tinta', semilla: 2049 },
+  },
+  {
+    nombre: 'Eco',
+    descripcion: 'Aros en C + contraforma desplazada — interferencia',
+    mode: 'symbol',
+    params: { symTipo: 'aro', symLineas: 4, symGrosor: 62, symCurva: 14, symEscala: 62, symGiro: 0, symX: -6, symY: 0, symRemate: 'recto', symB: true, symBTipo: 'aro', symBLineas: 4, symBGrosor: 55, symBCurva: 0, symBEscala: 52, symBGiro: 0, symBX: 20, symBY: 0, symBModo: 'contraforma', semilla: 2049 },
+  },
+  {
+    nombre: 'Mirada',
+    descripcion: 'Dos arcos enfrentados — el párpado del canal',
+    mode: 'symbol',
+    params: { symTipo: 'arcos', symLineas: 3, symGrosor: 58, symCurva: 50, symEscala: 58, symGiro: 0, symX: 0, symY: -7, symRemate: 'recto', symB: true, symBTipo: 'arcos', symBLineas: 3, symBGrosor: 58, symBCurva: 50, symBEscala: 58, symBGiro: 180, symBX: 0, symBY: 7, symBModo: 'tinta', semilla: 2049 },
+  },
 ];
 
 /** Rango declarativo para construir la UI y validar JSON pegado. */
@@ -273,11 +319,20 @@ export const RANGES: Record<string, Range> = {
   retratoExposicion: { min: -100, max: 100, step: 1, unit: '' },
   retratoContraste:  { min: 0,   max: 100, step: 1, unit: '' },
   retratoZoom:       { min: 1,   max: 4,   step: 0.05, unit: '×' },
-  symLineas: { min: 2,  max: 12,  step: 1, unit: '' },
+  symLineas: { min: 1,  max: 12,  step: 1, unit: '' },
   symGrosor: { min: 5,  max: 100, step: 1, unit: '' },
   symCurva:  { min: 0,  max: 100, step: 1, unit: '' },
   symEscala: { min: 30, max: 90,  step: 1, unit: '%' },
   symGiro:   { min: 0,  max: 360, step: 1, unit: '°' },
+  symX:      { min: -50, max: 50, step: 1, unit: '' },
+  symY:      { min: -50, max: 50, step: 1, unit: '' },
+  symBLineas: { min: 1,  max: 12,  step: 1, unit: '' },
+  symBGrosor: { min: 5,  max: 100, step: 1, unit: '' },
+  symBCurva:  { min: 0,  max: 100, step: 1, unit: '' },
+  symBEscala: { min: 15, max: 90,  step: 1, unit: '%' },
+  symBGiro:   { min: 0,  max: 360, step: 1, unit: '°' },
+  symBX:      { min: -50, max: 50, step: 1, unit: '' },
+  symBY:      { min: -50, max: 50, step: 1, unit: '' },
 };
 
 /** Gamas cromáticas predefinidas — puntos de partida, no límites (v0). */
@@ -344,14 +399,28 @@ export function coerceParams(input: unknown): TornoParams {
   if (typeof o.formaPath === 'string') p.formaPath = o.formaPath;
   if (typeof o.formaLetra === 'string' && o.formaLetra.trim()) p.formaLetra = o.formaLetra.trim().slice(0, 4);
   if (typeof o.formaBorde === 'boolean') p.formaBorde = o.formaBorde;
-  if (o.symTipo === 'onda' || o.symTipo === 'abanico' || o.symTipo === 'ala' || o.symTipo === 'arcos'
-    || o.symTipo === 'cruce' || o.symTipo === 'orbita' || o.symTipo === 'concha' || o.symTipo === 'codo') p.symTipo = o.symTipo;
+  const symKind = (v: unknown): v is SymbolKind =>
+    v === 'onda' || v === 'abanico' || v === 'ala' || v === 'arcos' || v === 'cruce'
+    || v === 'orbita' || v === 'concha' || v === 'codo' || v === 'aro';
+  if (symKind(o.symTipo)) p.symTipo = o.symTipo;
   if (o.symRemate === 'romo' || o.symRemate === 'recto') p.symRemate = o.symRemate;
   num('symLineas', RANGES.symLineas);
   num('symGrosor', RANGES.symGrosor);
   num('symCurva', RANGES.symCurva);
   num('symEscala', RANGES.symEscala);
   num('symGiro', RANGES.symGiro);
+  num('symX', RANGES.symX);
+  num('symY', RANGES.symY);
+  if (typeof o.symB === 'boolean') p.symB = o.symB;
+  if (symKind(o.symBTipo)) p.symBTipo = o.symBTipo;
+  if (o.symBModo === 'tinta' || o.symBModo === 'contraforma') p.symBModo = o.symBModo;
+  num('symBLineas', RANGES.symBLineas);
+  num('symBGrosor', RANGES.symBGrosor);
+  num('symBCurva', RANGES.symBCurva);
+  num('symBEscala', RANGES.symBEscala);
+  num('symBGiro', RANGES.symBGiro);
+  num('symBX', RANGES.symBX);
+  num('symBY', RANGES.symBY);
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;
   num('motionSegundos', { min: 1, max: 15, step: 1 });
   if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;

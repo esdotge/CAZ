@@ -1,19 +1,15 @@
 import { splitmix32 } from '../prng';
-import type { TornoParams, View } from './params';
+import type { SymbolKind, TornoParams, View } from './params';
 
 /**
- * SÍMBOLO — la síntesis total del guilloché: pocas líneas, trazo grueso,
- * dirección clara. Cinco arquetipos parametrizados y sembrados, en la
- * tradición de la marca de línea (Cruz Novillo, Rand, Wyman, Bass):
- *
- *  - ONDA     marca de bandera: líneas paralelas onduladas en bloque compacto
- *  - ABANICO  arcos concéntricos que giran y se acortan (creciente/swoosh)
- *  - ALA      haz radial de líneas finas que se abren desde un foco
- *  - ARCOS    arcos anidados (puerta, árbol, fuente)
- *  - CRUCE    dos familias onduladas tejidas con calado de papel
+ * SÍMBOLO — la síntesis total del guilloché: pocas líneas, trazo claro,
+ * dirección. Arquetipos parametrizados y sembrados, componibles en DOS CAPAS
+ * (A + B): cada capa con su arquetipo, posición, giro y escala; la capa B
+ * puede pintar en tinta o en CONTRAFORMA (talla espacio negativo con el
+ * color del papel — forma y contraforma).
  *
  * Misma semilla + mismos parámetros = mismo símbolo. `phase` ∈ [0,1) anima
- * en bucle sin costura (la onda viaja; los demás respiran).
+ * en bucle sin costura.
  */
 
 export interface SymbolStroke {
@@ -21,6 +17,21 @@ export interface SymbolStroke {
   width: number;
   /** Rebaje: se traza antes con el color del fondo (tejido/calado). */
   casing?: boolean;
+  /** CONTRAFORMA: el trazo pinta con el color del papel (espacio negativo). */
+  paper?: boolean;
+}
+
+interface LayerCfg {
+  tipo: SymbolKind;
+  lineas: number;
+  grosor: number;  // 5–100
+  curva: number;   // 0–100
+  escala: number;  // % del lado menor
+  giro: number;    // grados
+  x: number;       // -50..50 (% del medio lienzo)
+  y: number;
+  paper: boolean;  // contraforma
+  seed: number;
 }
 
 const TAU = Math.PI * 2;
@@ -34,18 +45,19 @@ function pathFrom(points: Array<[number, number]>): string {
   return d;
 }
 
-export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke[] {
-  const S = Math.min(view.w, view.h) * (p.symEscala / 100);
-  const cx = view.w / 2;
-  const cy = view.h / 2;
-  const giro = (p.symGiro * Math.PI) / 180;
+function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
+  const minV = Math.min(view.w, view.h);
+  const S = minV * (cfg.escala / 100);
+  const cx = view.w / 2 + (cfg.x / 100) * (minV / 2);
+  const cy = view.h / 2 + (cfg.y / 100) * (minV / 2);
+  const giro = (cfg.giro * Math.PI) / 180;
   const cosG = Math.cos(giro), sinG = Math.sin(giro);
-  const rnd = splitmix32(p.semilla);
-  const n = Math.max(2, Math.round(p.symLineas));
-  const A = p.symCurva / 100;
-  const G = p.symGrosor / 100;
+  const rnd = splitmix32(cfg.seed >>> 0);
+  const n = Math.max(1, Math.round(cfg.lineas));
+  const A = cfg.curva / 100;
+  const G = cfg.grosor / 100;
 
-  // coord local → lienzo (rotación GIRO + centrado)
+  // coord local → lienzo (rotación GIRO + posición de la capa)
   const pt = (x: number, y: number): [number, number] => [
     cx + x * cosG - y * sinG,
     cy + x * sinG + y * cosG,
@@ -53,7 +65,7 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
 
   const strokes: SymbolStroke[] = [];
 
-  switch (p.symTipo) {
+  switch (cfg.tipo) {
     // ---------------- ONDA: la bandera de caudal ----------------
     case 'onda': {
       const blockW = S;
@@ -61,13 +73,11 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
       const pitch = n > 1 ? blockH / (n - 1) : blockH;
       const lambda = blockW / (1.2 + rnd() * 0.9);
       const phi0 = rnd() * TAU;
-      // canal blanco garantizado: ondas paralelas EN FASE (como la bandera)
       const width = Math.min(pitch * 0.74, pitch * G * 1.25);
       const amp = A * pitch * 0.95;
-      // un leve corrimiento de fase por línea (sembrado) da vida sin fundirlas
       const phiStep = (rnd() - 0.5) * 0.35;
       for (let i = 0; i < n; i++) {
-        const y0 = -blockH / 2 + i * pitch;
+        const y0 = n > 1 ? -blockH / 2 + i * pitch : 0;
         const phi = phi0 + i * phiStep;
         const pts: Array<[number, number]> = [];
         const steps = 64;
@@ -105,16 +115,20 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
       break;
     }
 
-    // ---------------- ALA: haz radial desde un foco ----------------
+    // ---------------- ALA: haz radial — de abanico a asterisco ----------------
     case 'ala': {
-      const oy = S * 0.42;
-      const spreadDeg = 50 + A * 100;
+      // CURVA abre el haz: 50° (ala) hasta 360° (asterisco radial completo);
+      // el foco migra al centro al abrirse.
+      const spreadDeg = 50 + A * 310;
+      const tOpen = (spreadDeg - 50) / 310;
+      const oy = S * 0.42 * (1 - tOpen);
       const spread = ((spreadDeg * Math.PI) / 180) * (1 + Math.sin(TAU * phase) * 0.05);
       const width = Math.max(S * 0.006, S * 0.028 * G);
+      const full = spreadDeg >= 355;
       for (let i = 0; i < n; i++) {
-        const t = n > 1 ? i / (n - 1) : 0.5;
+        const t = n > 1 ? i / (full ? n : n - 1) : 0.5;
         const ang = -Math.PI / 2 + (t - 0.5) * spread;
-        const len = S * 0.86 * (0.84 + rnd() * 0.22);
+        const len = S * (0.86 - 0.38 * tOpen) * (0.84 + rnd() * 0.22);
         const bendMag = A * S * 0.13 * Math.abs(t - 0.5) * 2;
         const bendSign = t < 0.5 ? -1 : 1;
         const dirX = Math.cos(ang), dirY = Math.sin(ang);
@@ -154,6 +168,34 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
       break;
     }
 
+    // ---------------- ARO: anillos / C — apertura ajustable ----------------
+    case 'aro': {
+      const rMax = S * 0.48;
+      const r0 = S * 0.14;
+      const pitch = n > 1 ? (rMax - r0) / (n - 1) : 0;
+      // CURVA abre la boca de la C: 0 = anillo completo, 100 ≈ 150° de apertura
+      const gap = A * 0.85 * Math.PI;
+      const width = n > 1
+        ? Math.min(pitch * 0.6, Math.max(pitch, 3) * G * 1.1)
+        : Math.max(S * 0.015, S * 0.1 * G);
+      const sway = Math.sin(TAU * phase) * 0.04;
+      for (let i = 0; i < n; i++) {
+        const r = n > 1 ? rMax - i * pitch : rMax * 0.92;
+        const jit = (rnd() - 0.5) * 0.06;
+        const a0 = gap / 2 + jit + sway * (i / Math.max(1, n));
+        const a1 = TAU - gap / 2 + jit;
+        const pts: Array<[number, number]> = [];
+        const steps = 72;
+        for (let s = 0; s <= steps; s++) {
+          const a = a0 + (s / steps) * (a1 - a0);
+          pts.push(pt(Math.cos(a) * r, Math.sin(a) * r));
+        }
+        const d = pathFrom(pts) + (gap < 0.01 ? 'Z' : '');
+        strokes.push({ d, width });
+      }
+      break;
+    }
+
     // ---------------- ÓRBITA: elipses que giran — esfera de líneas ----------------
     case 'orbita': {
       const a = S * 0.48;
@@ -162,7 +204,6 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
       const width = Math.max(S * 0.006, S * 0.024 * G);
       const step = Math.PI / n;
       for (let i = 0; i < n; i++) {
-        // rotar 1 paso por ciclo: la elipse i ocupa el lugar de la i+1 → loop sin costura
         const phi = base + i * step + phase * step;
         const cosP = Math.cos(phi), sinP = Math.sin(phi);
         const pts: Array<[number, number]> = [];
@@ -179,7 +220,7 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
 
     // ---------------- CONCHA: elipses ancladas que crecen e inclinan ----------------
     case 'concha': {
-      const ax = -S * 0.05, ay = S * 0.36; // ancla común en la base
+      const ax = -S * 0.05, ay = S * 0.36;
       const maxTilt = ((20 + A * 45) * Math.PI) / 180;
       const width = Math.max(S * 0.006, S * 0.022 * G);
       const sway = Math.sin(TAU * phase) * 0.05;
@@ -187,9 +228,8 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
         const t = n > 1 ? i / (n - 1) : 1;
         const a = S * (0.2 + 0.36 * t);
         const b = a * (0.5 + rnd() * 0.06);
-        const phi = t * maxTilt + sway * t; // inclina hacia arriba-derecha (NE)
+        const phi = t * maxTilt + sway * t;
         const cosP = Math.cos(phi), sinP = Math.sin(phi);
-        // el punto inferior de la elipse cae siempre en el ancla
         const cx0 = ax + sinP * b;
         const cy0 = ay - cosP * b;
         const pts: Array<[number, number]> = [];
@@ -201,20 +241,19 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
         }
         strokes.push({ d: pathFrom(pts) + 'Z', width });
       }
-      // línea base: el suelo del que nace la concha
-      strokes.push({ d: pathFrom([pt(ax - S * 0.3, ay), pt(ax + S * 0.52, ay)]), width });
+      strokes.push({ d: pathFrom([pt(ax - S * 0.3, ay), pt(ax + S * 0.52, ay)]), width: Math.max(S * 0.006, S * 0.022 * G) });
       break;
     }
 
     // ---------------- CODO: franjas que doblan de vertical a horizontal ----------------
     case 'codo': {
-      const px0 = -S * 0.11, py0 = S * 0.12; // pivote del codo (marca equilibrada)
+      const px0 = -S * 0.11, py0 = S * 0.12;
       const r0 = S * 0.09;
       const rMax = S * 0.44;
       const pitch = n > 1 ? (rMax - r0) / (n - 1) : rMax - r0;
       const width = Math.min(pitch * 0.9, Math.max(pitch, 3) * G * 1.3);
-      const xR = S * 0.55;                  // borde derecho común
-      const legDown = S * (0.06 + A * 0.2); // pata inferior
+      const xR = S * 0.55;
+      const legDown = S * (0.06 + A * 0.2);
       const sway = Math.sin(TAU * phase) * 0.02;
       for (let i = 0; i < n; i++) {
         const r = r0 + i * pitch;
@@ -240,11 +279,9 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
       const pitchH = nH > 1 ? block / (nH - 1) : block;
       const pitchV = nV > 1 ? block / (nV - 1) : block;
       const pitchMin = Math.min(pitchH, pitchV);
-      // trazo contenido: el tejido necesita aire entre cruces
       const width = Math.min(pitchMin * 0.42, pitchMin * G * 0.72);
       const lambda = block / (1.1 + rnd() * 0.5);
       const phi0 = rnd() * TAU;
-      // ondas EN FASE y amplitud uniforme: el cruce se lee, no se enreda
       const amp = A * pitchMin * 0.3;
 
       const mkLine = (idx: number, count: number, pitch: number, vertical: boolean): SymbolStroke => {
@@ -260,13 +297,36 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
         return { d: pathFrom(pts), width, casing: true };
       };
 
-      // horizontales debajo, verticales tejen por encima con rebaje de papel
       for (let i = 0; i < nH; i++) strokes.push({ ...mkLine(i, nH, pitchH, false), casing: false });
       for (let i = 0; i < nV; i++) strokes.push(mkLine(i, nV, pitchV, true));
       break;
     }
   }
 
+  if (cfg.paper) {
+    for (const st of strokes) {
+      st.paper = true;
+      st.casing = false;
+    }
+  }
+  return strokes;
+}
+
+export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke[] {
+  const capaA: LayerCfg = {
+    tipo: p.symTipo, lineas: p.symLineas, grosor: p.symGrosor, curva: p.symCurva,
+    escala: p.symEscala, giro: p.symGiro, x: p.symX, y: p.symY,
+    paper: false, seed: p.semilla,
+  };
+  const strokes = buildLayer(capaA, view, phase);
+  if (p.symB) {
+    const capaB: LayerCfg = {
+      tipo: p.symBTipo, lineas: p.symBLineas, grosor: p.symBGrosor, curva: p.symBCurva,
+      escala: p.symBEscala, giro: p.symBGiro, x: p.symBX, y: p.symBY,
+      paper: p.symBModo === 'contraforma', seed: (p.semilla ^ 0x51ed2705) >>> 0,
+    };
+    strokes.push(...buildLayer(capaB, view, phase));
+  }
   return strokes;
 }
 
@@ -290,12 +350,12 @@ export function drawSymbolFrame(
   const strokes = buildSymbol(p, view, phase);
   for (const st of strokes) {
     const path = new Path2D(st.d);
-    if (st.casing) {
+    if (st.casing && !st.paper) {
       ctx.strokeStyle = p.colorFondo;
       ctx.lineWidth = st.width * 1.6;
       ctx.stroke(path);
     }
-    ctx.strokeStyle = p.colorTinta;
+    ctx.strokeStyle = st.paper ? p.colorFondo : p.colorTinta;
     ctx.lineWidth = st.width;
     ctx.stroke(path);
   }
