@@ -45,6 +45,7 @@ export interface TornoParams {
   symY: number;          // -50..50, posición vertical de la capa
   symTrenza: number;     // 0–100, los caminos se cruzan y tejen ojos (DELTA)
   symPunta: number;      // 0–100, unión del óvalo: redondeada ↔ vértice (ESPIRA)
+  symFade: number;       // 0–100, atenuación por profundidad (0 = una sola tinta)
   symRemate: RemateKind; // terminal del trazo (ambas capas)
 
   // --- modo SÍMBOLO (capa B, combinable) ---
@@ -59,6 +60,7 @@ export interface TornoParams {
   symBY: number;
   symBTrenza: number;
   symBPunta: number;
+  symBFade: number;
   symBModo: CapaModo;    // tinta = suma; contraforma = talla espacio negativo
 
   // --- modo RETRATO ---
@@ -126,6 +128,7 @@ export const DEFAULTS: TornoParams = {
   symY: 0,
   symTrenza: 0,
   symPunta: 0,
+  symFade: 46,
   symRemate: 'recto',
   symB: false,
   symBTipo: 'onda',
@@ -138,6 +141,7 @@ export const DEFAULTS: TornoParams = {
   symBY: 0,
   symBTrenza: 0,
   symBPunta: 0,
+  symBFade: 46,
   symBModo: 'tinta',
   colorFondo: '#F6F4EF',
   colorTinta: '#101012',
@@ -346,13 +350,13 @@ export const PRESETS: Preset[] = [
     nombre: 'Espira',
     descripcion: 'Banda de Möbius: corrientes sobre una superficie no orientable',
     mode: 'symbol',
-    params: { symTipo: 'espira', symLineas: 7, symGrosor: 18, symCurva: 55, symEscala: 66, symGiro: -32, symX: 0, symY: 0, symTrenza: 0, symPunta: 58, symRemate: 'recto', symB: false, semilla: 2049 },
+    params: { symTipo: 'espira', symLineas: 7, symGrosor: 18, symCurva: 55, symEscala: 66, symGiro: -32, symX: 0, symY: 0, symTrenza: 0, symPunta: 58, symFade: 46, symRemate: 'recto', symB: false, semilla: 2049 },
   },
   {
     nombre: 'Nudo',
     descripcion: 'Möbius de tres medias torsiones — el nudo del caudal',
     mode: 'symbol',
-    params: { symTipo: 'espira', symLineas: 5, symGrosor: 18, symCurva: 40, symEscala: 66, symGiro: 0, symX: 0, symY: 0, symTrenza: 55, symPunta: 45, symRemate: 'recto', symB: false, semilla: 2049 },
+    params: { symTipo: 'espira', symLineas: 5, symGrosor: 18, symCurva: 40, symEscala: 66, symGiro: 0, symX: 0, symY: 0, symTrenza: 55, symPunta: 45, symFade: 46, symRemate: 'recto', symB: false, semilla: 2049 },
   },
   {
     nombre: 'Mirada',
@@ -393,6 +397,7 @@ export const RANGES: Record<string, Range> = {
   symY:      { min: -50, max: 50, step: 1, unit: '' },
   symTrenza: { min: 0,   max: 100, step: 1, unit: '' },
   symPunta:  { min: 0,   max: 100, step: 1, unit: '' },
+  symFade:   { min: 0,   max: 100, step: 1, unit: '' },
   symBLineas: { min: 1,  max: 12,  step: 1, unit: '' },
   symBGrosor: { min: 5,  max: 100, step: 1, unit: '' },
   symBCurva:  { min: 0,  max: 100, step: 1, unit: '' },
@@ -402,6 +407,7 @@ export const RANGES: Record<string, Range> = {
   symBY:      { min: -50, max: 50, step: 1, unit: '' },
   symBTrenza: { min: 0,   max: 100, step: 1, unit: '' },
   symBPunta:  { min: 0,   max: 100, step: 1, unit: '' },
+  symBFade:   { min: 0,   max: 100, step: 1, unit: '' },
 };
 
 /** Gamas cromáticas predefinidas — puntos de partida, no límites (v0). */
@@ -483,6 +489,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('symY', RANGES.symY);
   num('symTrenza', RANGES.symTrenza);
   num('symPunta', RANGES.symPunta);
+  num('symFade', RANGES.symFade);
   if (typeof o.symB === 'boolean') p.symB = o.symB;
   if (symKind(o.symBTipo)) p.symBTipo = o.symBTipo;
   if (o.symBModo === 'tinta' || o.symBModo === 'contraforma') p.symBModo = o.symBModo;
@@ -495,6 +502,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('symBY', RANGES.symBY);
   num('symBTrenza', RANGES.symBTrenza);
   num('symBPunta', RANGES.symBPunta);
+  num('symBFade', RANGES.symBFade);
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;
   num('motionSegundos', { min: 1, max: 15, step: 1 });
   if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;

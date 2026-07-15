@@ -34,6 +34,7 @@ interface LayerCfg {
   y: number;
   trenza: number;  // 0–100, los caminos se cruzan y tejen ojos (DELTA)
   punta: number;   // 0–100, unión del óvalo: redondeada ↔ vértice (ESPIRA)
+  fade: number;    // 0–100, atenuación por profundidad (0 = una sola tinta)
   paper: boolean;  // contraforma
   seed: number;
 }
@@ -383,30 +384,48 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
         return project(dist * Math.cos(u), dist * Math.sin(u), v * Math.sin(cs));
       };
 
-      const BINS = 10;
+      const depthFade = cfg.fade / 100; // PROFUNDIDAD: 0 = una sola tinta plana
+      const BINS = depthFade < 0.01 ? 1 : 10;
       const bins: string[] = Array(BINS).fill('');
+      // tramos agrupados por RACHAS de bin: un remate sólo al cambiar de
+      // profundidad — sin puntos oscuros por solape de alfas
       const addCurrent = (v: number, revs: number, samples: number): void => {
         let prev = sample(0, v);
+        let run = '';
+        let runBin = -1;
+        const flushRun = (): void => {
+          if (run && runBin >= 0) bins[runBin] += run;
+          run = '';
+        };
         for (let j = 1; j <= samples; j++) {
           const u = (TAU * revs * j) / samples;
           const cur = sample(u, v);
           const depth = (prev[2] + cur[2]) * 0.5;
           const nd = Math.min(0.999, Math.max(0, 0.5 + depth / (2 * depthRange)));
-          const b = Math.floor(nd * BINS);
+          const b = BINS === 1 ? 0 : Math.floor(nd * BINS);
           const p1 = pt(prev[0], prev[1]);
           const p2 = pt(cur[0], cur[1]);
-          bins[b] += `M${p1[0].toFixed(2)} ${p1[1].toFixed(2)}L${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+          if (b !== runBin) {
+            flushRun();
+            runBin = b;
+            run = `M${p1[0].toFixed(2)} ${p1[1].toFixed(2)}`;
+          }
+          run += `L${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
           prev = cur;
         }
+        flushRun();
       };
 
-      addCurrent(0, 1, 144);
-      for (let i = 1; i <= sideCount; i++) addCurrent((stripW * i) / sideCount, 2, 288);
+      // la corriente central exacta (v = 0) es un círculo inmóvil por
+      // construcción — medio paso fuera del eje TODO fluye con la torsión
+      for (let i = 0; i <= sideCount; i++) {
+        const v = (stripW * (i + 0.5)) / (sideCount + 0.5);
+        addCurrent(v, 2, 288);
+      }
 
-      const depthFade = 0.46;
       for (let b = 0; b < BINS; b++) {
         if (!bins[b]) continue;
-        const op = 1 - depthFade * (1 - b / (BINS - 1)) * 0.82;
+        const op = BINS === 1 ? 1 : 1 - depthFade * (1 - b / (BINS - 1)) * 0.82;
         strokes.push({ d: bins[b], width, opacity: op });
       }
       break;
@@ -458,14 +477,14 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
   const capaA: LayerCfg = {
     tipo: p.symTipo, lineas: p.symLineas, grosor: p.symGrosor, curva: p.symCurva,
     escala: p.symEscala, giro: p.symGiro, x: p.symX, y: p.symY,
-    trenza: p.symTrenza, punta: p.symPunta, paper: false, seed: p.semilla,
+    trenza: p.symTrenza, punta: p.symPunta, fade: p.symFade, paper: false, seed: p.semilla,
   };
   const strokes = buildLayer(capaA, view, phase);
   if (p.symB) {
     const capaB: LayerCfg = {
       tipo: p.symBTipo, lineas: p.symBLineas, grosor: p.symBGrosor, curva: p.symBCurva,
       escala: p.symBEscala, giro: p.symBGiro, x: p.symBX, y: p.symBY,
-      trenza: p.symBTrenza, punta: p.symBPunta, paper: p.symBModo === 'contraforma', seed: (p.semilla ^ 0x51ed2705) >>> 0,
+      trenza: p.symBTrenza, punta: p.symBPunta, fade: p.symBFade, paper: p.symBModo === 'contraforma', seed: (p.semilla ^ 0x51ed2705) >>> 0,
     };
     strokes.push(...buildLayer(capaB, view, phase));
   }
