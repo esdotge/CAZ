@@ -198,6 +198,36 @@ export const PRESETS: Preset[] = [
     mode: 'patron',
     params: { curso: 0, caudal: 170, cauce: 45, corriente: 16, calado: 0.9, marea: 26, deriva: 90, orillas: 6, semilla: 5150 },
   },
+  {
+    nombre: 'Husada',
+    descripcion: 'Torsión alta: columnas de tela retorcida en 3D',
+    mode: 'patron',
+    params: { curso: 90, caudal: 240, cauce: 18, corriente: 12, torsion: 78, calado: 0.8, marea: 12, deriva: 0, orillas: 6, semilla: 4114 },
+  },
+  {
+    nombre: 'Niebla',
+    descripcion: 'Orillas al máximo: el patrón se disuelve en el papel',
+    mode: 'patron',
+    params: { curso: 0, caudal: 200, cauce: 35, corriente: 30, torsion: 0, calado: 0.7, marea: 45, deriva: 0, orillas: 18, semilla: 6280 },
+  },
+  {
+    nombre: 'Bitinta',
+    descripcion: 'Dos planchas: la 2ª trama en agua, moiré de billete',
+    mode: 'patron',
+    params: { curso: 8, caudal: 190, cauce: 45, corriente: 14, torsion: 0, calado: 0.9, marea: 30, deriva: 14, colorDeriva: '#177E70', orillas: 6, semilla: 3777 },
+  },
+  {
+    nombre: 'Remanso',
+    descripcion: 'Aguas quietas: ondas largas, corriente mínima',
+    mode: 'patron',
+    params: { curso: 0, caudal: 90, cauce: 12, corriente: 4, torsion: 0, calado: 1.2, marea: 55, deriva: 0, orillas: 8, semilla: 8241 },
+  },
+  {
+    nombre: 'Rápidos',
+    descripcion: 'Turbulencia máxima con un punto de torsión — aguas bravas',
+    mode: 'patron',
+    params: { curso: 355, caudal: 280, cauce: 60, corriente: 92, torsion: 22, calado: 0.6, marea: 65, deriva: 0, orillas: 4, semilla: 1930 },
+  },
 
   // --- RETRATO --- (corriente baja y cauce contenido = trazo limpio)
   {
