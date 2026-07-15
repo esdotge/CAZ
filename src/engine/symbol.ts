@@ -287,10 +287,12 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const x1 = x0 + S * 0.3;                         // los carriles se alcanzan aquí
       const xEnd = S * 0.54;
       const T = cfg.trenza / 100;
-      const cycles = 1 + Math.floor(T * 2.2);          // 1..3 ondas de trenza
-      const braidAmp = T * pitchLane * 0.78;           // ≥ ~medio carril → se cruzan
-      const xB0 = x0 + S * 0.1;                        // zona de trenzado
-      const xB1 = xEnd - S * 0.06;
+      // una sola comba armónica por camino (media onda, sin zigzag): los
+      // vecinos comban en contrafase → se separan y reconvergen dibujando
+      // una HOJA/LENTE entre ellos (el boceto)
+      const bowAmp = T * pitchLane * 1.5;
+      const xB0 = x0 + S * 0.06;                       // zona de la comba
+      const xB1 = xEnd - S * 0.05;
 
       // tronco
       strokes.push({ d: pathFrom([pt(-S * 0.55, 0), pt(x0 + width * 0.5, 0)]), width });
@@ -305,12 +307,14 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
         return c * c * (3 - 2 * c);
       };
 
+      const breathe = 1 + Math.sin(TAU * phase) * 0.06;
       for (let k = 0; k < lanes.length; k++) {
         const t = lanes[k];
         const yLane = t * pitchLane * (1 + (rnd() - 0.5) * 0.05);
-        // contrafase por CARRIL ESPACIAL: los vecinos ondulan opuestos → se cruzan
+        // contrafase por CARRIL ESPACIAL: vecinos comban opuestos
         const li = Math.round(t + (n - 1) / 2);
-        const phi = (li % 2) * Math.PI + t * 0.25;
+        const sign = li % 2 === 0 ? 1 : -1;
+        const mag = bowAmp * (0.85 + rnd() * 0.3) * breathe;
         const xStart = x0 - Math.abs(t) * S * 0.045; // los exteriores nacen antes
         const pts: Array<[number, number]> = [];
         const steps = 72;
@@ -319,15 +323,14 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
           // abanico sigmoide: sale y llega en horizontal
           const pF = smooth01((x - xStart) / (x1 - xStart));
           let y = yLane * pF;
-          // TRENZA: onda en contrafase con envolvente (los extremos quedan fijos)
-          if (braidAmp > 0.01) {
+          if (bowAmp > 0.01) {
             const vB = smooth01((x - xB0) / (xB1 - xB0));
-            const env = Math.sin(Math.PI * vB);
-            y += braidAmp * env * Math.sin(TAU * cycles * vB + phi - TAU * phase);
+            y += sign * mag * Math.sin(Math.PI * vB);
           }
           pts.push(pt(x, y));
         }
-        strokes.push({ d: pathFrom(pts), width, casing: true });
+        // sin rebaje: los cruces son uniones sólidas, como ramas de árbol
+        strokes.push({ d: pathFrom(pts), width });
       }
       break;
     }
