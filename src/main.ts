@@ -261,6 +261,8 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   symGiro: { name: 'GIRO', desc: 'Rotación de la capa' },
   symX: { name: 'POSICIÓN X', desc: 'Desplaza la capa en horizontal' },
   symY: { name: 'POSICIÓN Y', desc: 'Desplaza la capa en vertical' },
+  symTrenza: { name: 'TRENZA', desc: 'Los caminos se cruzan y tejen ojos/hojas (DELTA)' },
+  symBTrenza: { name: 'TRENZA B', desc: 'Trenzado de la capa B (DELTA)' },
   symBLineas: { name: 'LÍNEAS B', desc: 'Trazos de la capa B' },
   symBGrosor: { name: 'GROSOR B', desc: 'Peso del trazo de la capa B' },
   symBCurva: { name: 'CURVA B', desc: 'Ondulación / apertura de la capa B' },
@@ -382,7 +384,7 @@ function buildPanel(): void {
 
     panel.appendChild(group('Símbolo · capa A', [
       tipoSeg('symTipo'),
-      slider('symLineas'), slider('symGrosor'), slider('symCurva'),
+      slider('symLineas'), slider('symGrosor'), slider('symCurva'), slider('symTrenza'),
       slider('symEscala'), slider('symGiro'), slider('symX'), slider('symY'),
       remateWrap,
       el('div', 'hint-inline', 'Pocas líneas, trazo claro: la síntesis del guilloché. El dado 🎲 explora variaciones.'),
@@ -408,7 +410,7 @@ function buildPanel(): void {
       capaBChildren.push(
         tipoSeg('symBTipo'),
         modoWrap,
-        slider('symBLineas'), slider('symBGrosor'), slider('symBCurva'),
+        slider('symBLineas'), slider('symBGrosor'), slider('symBCurva'), slider('symBTrenza'),
         slider('symBEscala'), slider('symBGiro'), slider('symBX'), slider('symBY'),
         el('div', 'hint-inline', 'CONTRAFORMA pinta con el color del papel: talla espacio negativo sobre la capa A (forma y contraforma).'),
       );

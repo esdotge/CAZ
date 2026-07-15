@@ -30,6 +30,7 @@ interface LayerCfg {
   giro: number;    // grados
   x: number;       // -50..50 (% del medio lienzo)
   y: number;
+  trenza: number;  // 0–100, los caminos se cruzan y tejen ojos (DELTA)
   paper: boolean;  // contraforma
   seed: number;
 }
@@ -56,6 +57,9 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
   const n = Math.max(1, Math.round(cfg.lineas));
   const A = cfg.curva / 100;
   const G = cfg.grosor / 100;
+  // GROSOR global: la misma pluma en todos los arquetipos (relativa al
+  // lienzo, no a la capa) → las combinaciones de capas casan en peso.
+  const wGlobal = minV * (0.006 + G * 0.042);
 
   // coord local → lienzo (rotación GIRO + posición de la capa)
   const pt = (x: number, y: number): [number, number] => [
@@ -73,7 +77,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const pitch = n > 1 ? blockH / (n - 1) : blockH;
       const lambda = blockW / (1.2 + rnd() * 0.9);
       const phi0 = rnd() * TAU;
-      const width = Math.min(pitch * 0.74, pitch * G * 1.25);
+      const width = Math.min(pitch * 0.8, wGlobal);
       const amp = A * pitch * 0.95;
       const phiStep = (rnd() - 0.5) * 0.35;
       for (let i = 0; i < n; i++) {
@@ -98,7 +102,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const sweep = ((120 + A * 140) * Math.PI) / 180;
       const rotStep = ((6 + rnd() * 12) * Math.PI) / 180;
       const base = rnd() * TAU;
-      const width = Math.min(Math.max(rStep * 0.9, 2), Math.max(rStep, 3) * G * 1.4);
+      const width = n > 1 ? Math.min(rStep * 0.85, wGlobal) : wGlobal;
       const sway = Math.sin(TAU * phase) * 0.06;
       for (let i = 0; i < n; i++) {
         const r = r0 + i * rStep;
@@ -123,7 +127,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const tOpen = (spreadDeg - 50) / 310;
       const oy = S * 0.42 * (1 - tOpen);
       const spread = ((spreadDeg * Math.PI) / 180) * (1 + Math.sin(TAU * phase) * 0.05);
-      const width = Math.max(S * 0.006, S * 0.028 * G);
+      const width = wGlobal;
       const full = spreadDeg >= 355;
       for (let i = 0; i < n; i++) {
         const t = n > 1 ? i / (full ? n : n - 1) : 0.5;
@@ -151,7 +155,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const r0 = S * 0.14;
       const rStep = n > 1 ? (S * 0.52 - r0) / (n - 1) : 0;
       const sweep = ((110 + A * 80) * Math.PI) / 180;
-      const width = Math.min(Math.max(rStep * 0.88, 2), Math.max(rStep, 3) * G * 1.35);
+      const width = n > 1 ? Math.min(rStep * 0.85, wGlobal) : wGlobal;
       const sway = Math.sin(TAU * phase) * 0.03;
       for (let i = 0; i < n; i++) {
         const r = r0 + i * rStep;
@@ -175,9 +179,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const pitch = n > 1 ? (rMax - r0) / (n - 1) : 0;
       // CURVA abre la boca de la C: 0 = anillo completo, 100 ≈ 150° de apertura
       const gap = A * 0.85 * Math.PI;
-      const width = n > 1
-        ? Math.min(pitch * 0.6, Math.max(pitch, 3) * G * 1.1)
-        : Math.max(S * 0.015, S * 0.1 * G);
+      const width = n > 1 ? Math.min(pitch * 0.6, wGlobal) : wGlobal;
       const sway = Math.sin(TAU * phase) * 0.04;
       for (let i = 0; i < n; i++) {
         const r = n > 1 ? rMax - i * pitch : rMax * 0.92;
@@ -201,7 +203,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const a = S * 0.48;
       const b = a * (0.22 + A * 0.4);
       const base = rnd() * Math.PI;
-      const width = Math.max(S * 0.006, S * 0.024 * G);
+      const width = wGlobal;
       const step = Math.PI / n;
       for (let i = 0; i < n; i++) {
         const phi = base + i * step + phase * step;
@@ -222,7 +224,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
     case 'concha': {
       const ax = -S * 0.05, ay = S * 0.36;
       const maxTilt = ((20 + A * 45) * Math.PI) / 180;
-      const width = Math.max(S * 0.006, S * 0.022 * G);
+      const width = wGlobal;
       const sway = Math.sin(TAU * phase) * 0.05;
       for (let i = 0; i < n; i++) {
         const t = n > 1 ? i / (n - 1) : 1;
@@ -241,7 +243,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
         }
         strokes.push({ d: pathFrom(pts) + 'Z', width });
       }
-      strokes.push({ d: pathFrom([pt(ax - S * 0.3, ay), pt(ax + S * 0.52, ay)]), width: Math.max(S * 0.006, S * 0.022 * G) });
+      strokes.push({ d: pathFrom([pt(ax - S * 0.3, ay), pt(ax + S * 0.52, ay)]), width });
       break;
     }
 
@@ -251,7 +253,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const r0 = S * 0.09;
       const rMax = S * 0.44;
       const pitch = n > 1 ? (rMax - r0) / (n - 1) : rMax - r0;
-      const width = Math.min(pitch * 0.9, Math.max(pitch, 3) * G * 1.3);
+      const width = Math.min(pitch * 0.85, wGlobal);
       const xR = S * 0.55;
       const legDown = S * (0.06 + A * 0.2);
       const sway = Math.sin(TAU * phase) * 0.02;
@@ -270,42 +272,62 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       break;
     }
 
-    // ---------------- DELTA: el caudal se ramifica, se entrelaza y dibuja la C ----------------
-    // Tronco horizontal desde la izquierda; los canales nacen tangenciales al
-    // tronco (los exteriores antes — de menos a más) y ENVUELVEN por arriba y
-    // por abajo hasta la boca, abierta a la derecha: la C. Los centros de cada
-    // arco van ligeramente desplazados para que los cauces se crucen cerca del
-    // lomo, y el rebaje de papel teje los cruces (sobre-bajo).
+    // ---------------- DELTA: de un tronco salen caminos que se trenzan ----------------
+    // La forma base: tronco horizontal → los caminos se abren en sigmoide
+    // (tangente horizontal al salir y al llegar) hasta carriles alineados a la
+    // derecha. TRENZA es la variable nueva: los caminos ondulan en contrafase
+    // sobre geometría circular — a poco no se tocan; al subir se cruzan y
+    // tejen OJOS/HOJAS entre cruce y cruce (el río con afluentes visto desde
+    // el aire, raíces superponiéndose). El rebaje de papel teje el sobre-bajo.
     case 'delta': {
-      const width = Math.max(S * 0.012, S * 0.055 * G);
-      const mouth = ((58 - A * 44) * Math.PI) / 180; // CURVA cierra la boca de la C
-      const hasCenter = n % 2 === 1;
-      const pairs = Math.floor(n / 2);
-      const rMin = S * 0.32; // conchas próximas: los canales conviven y se rozan
-      const rMax = S * 0.5;
-      const breathe = 1 + Math.sin(TAU * phase) * 0.03;
+      const spreadY = S * (0.5 + A * 0.34);           // CURVA abre el abanico
+      const pitchLane = n > 1 ? spreadY / (n - 1) : 0;
+      const width = Math.min(wGlobal, n > 1 ? pitchLane * 0.8 : wGlobal);
+      const x0 = -S * 0.34;                            // fin del tronco
+      const x1 = x0 + S * 0.3;                         // los carriles se alcanzan aquí
+      const xEnd = S * 0.54;
+      const T = cfg.trenza / 100;
+      const cycles = 1 + Math.floor(T * 2.2);          // 1..3 ondas de trenza
+      const braidAmp = T * pitchLane * 0.78;           // ≥ ~medio carril → se cruzan
+      const xB0 = x0 + S * 0.1;                        // zona de trenzado
+      const xB1 = xEnd - S * 0.06;
 
-      // tronco: entra por la izquierda; si hay canal central, desemboca por la boca
-      const trunkEnd = hasCenter ? S * 0.52 : width * 0.5;
-      strokes.push({ d: pathFrom([pt(-S * 0.55, 0), pt(trunkEnd, 0)]), width });
+      // tronco
+      strokes.push({ d: pathFrom([pt(-S * 0.55, 0), pt(x0 + width * 0.5, 0)]), width });
 
-      for (let j = 0; j < pairs; j++) {
-        const r = pairs > 1 ? rMax - (j * (rMax - rMin)) / (pairs - 1) : rMax;
-        for (const dir of [-1, 1] as const) {
-          // el centro se desplaza HACIA el lado contrario: el canal superior e
-          // inferior del mismo par se cruzan cerca del lomo — entrelazado real
-          const cyOff = -dir * S * (0.035 + rnd() * 0.03);
-          const rr = r * (0.97 + rnd() * 0.06);
-          const sweep = (Math.PI - mouth) * breathe;
-          const pts: Array<[number, number]> = [];
-          const steps = 60;
-          for (let s = 0; s <= steps; s++) {
-            const u = Math.pow(s / steps, 1.3); // arranque suave, tangencial al tronco
-            const th = Math.PI + dir * sweep * u;
-            pts.push(pt(Math.cos(th) * rr, cyOff + Math.sin(th) * rr));
+      // orden intercalado (centro, +1, -1, +2, -2…) → el tejido alterna
+      const lanes: number[] = [];
+      for (let i = 0; i < n; i++) lanes.push(i - (n - 1) / 2);
+      lanes.sort((a, b) => Math.abs(a) - Math.abs(b) || b - a);
+
+      const smooth01 = (v: number): number => {
+        const c = Math.min(1, Math.max(0, v));
+        return c * c * (3 - 2 * c);
+      };
+
+      for (let k = 0; k < lanes.length; k++) {
+        const t = lanes[k];
+        const yLane = t * pitchLane * (1 + (rnd() - 0.5) * 0.05);
+        // contrafase por CARRIL ESPACIAL: los vecinos ondulan opuestos → se cruzan
+        const li = Math.round(t + (n - 1) / 2);
+        const phi = (li % 2) * Math.PI + t * 0.25;
+        const xStart = x0 - Math.abs(t) * S * 0.045; // los exteriores nacen antes
+        const pts: Array<[number, number]> = [];
+        const steps = 72;
+        for (let s = 0; s <= steps; s++) {
+          const x = xStart + (s / steps) * (xEnd - xStart);
+          // abanico sigmoide: sale y llega en horizontal
+          const pF = smooth01((x - xStart) / (x1 - xStart));
+          let y = yLane * pF;
+          // TRENZA: onda en contrafase con envolvente (los extremos quedan fijos)
+          if (braidAmp > 0.01) {
+            const vB = smooth01((x - xB0) / (xB1 - xB0));
+            const env = Math.sin(Math.PI * vB);
+            y += braidAmp * env * Math.sin(TAU * cycles * vB + phi - TAU * phase);
           }
-          strokes.push({ d: pathFrom(pts), width, casing: true });
+          pts.push(pt(x, y));
         }
+        strokes.push({ d: pathFrom(pts), width, casing: true });
       }
       break;
     }
@@ -319,7 +341,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const pitchH = nH > 1 ? block / (nH - 1) : block;
       const pitchV = nV > 1 ? block / (nV - 1) : block;
       const pitchMin = Math.min(pitchH, pitchV);
-      const width = Math.min(pitchMin * 0.42, pitchMin * G * 0.72);
+      const width = Math.min(pitchMin * 0.45, wGlobal);
       const lambda = block / (1.1 + rnd() * 0.5);
       const phi0 = rnd() * TAU;
       const amp = A * pitchMin * 0.3;
@@ -356,14 +378,14 @@ export function buildSymbol(p: TornoParams, view: View, phase = 0): SymbolStroke
   const capaA: LayerCfg = {
     tipo: p.symTipo, lineas: p.symLineas, grosor: p.symGrosor, curva: p.symCurva,
     escala: p.symEscala, giro: p.symGiro, x: p.symX, y: p.symY,
-    paper: false, seed: p.semilla,
+    trenza: p.symTrenza, paper: false, seed: p.semilla,
   };
   const strokes = buildLayer(capaA, view, phase);
   if (p.symB) {
     const capaB: LayerCfg = {
       tipo: p.symBTipo, lineas: p.symBLineas, grosor: p.symBGrosor, curva: p.symBCurva,
       escala: p.symBEscala, giro: p.symBGiro, x: p.symBX, y: p.symBY,
-      paper: p.symBModo === 'contraforma', seed: (p.semilla ^ 0x51ed2705) >>> 0,
+      trenza: p.symBTrenza, paper: p.symBModo === 'contraforma', seed: (p.semilla ^ 0x51ed2705) >>> 0,
     };
     strokes.push(...buildLayer(capaB, view, phase));
   }

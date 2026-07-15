@@ -42,6 +42,7 @@ export interface TornoParams {
   symGiro: number;       // 0–360°, rotación del símbolo
   symX: number;          // -50..50, posición horizontal de la capa
   symY: number;          // -50..50, posición vertical de la capa
+  symTrenza: number;     // 0–100, los caminos se cruzan y tejen ojos (DELTA)
   symRemate: RemateKind; // terminal del trazo (ambas capas)
 
   // --- modo SÍMBOLO (capa B, combinable) ---
@@ -54,6 +55,7 @@ export interface TornoParams {
   symBGiro: number;
   symBX: number;
   symBY: number;
+  symBTrenza: number;
   symBModo: CapaModo;    // tinta = suma; contraforma = talla espacio negativo
 
   // --- modo RETRATO ---
@@ -118,6 +120,7 @@ export const DEFAULTS: TornoParams = {
   symGiro: 0,
   symX: 0,
   symY: 0,
+  symTrenza: 0,
   symRemate: 'recto',
   symB: false,
   symBTipo: 'onda',
@@ -128,6 +131,7 @@ export const DEFAULTS: TornoParams = {
   symBGiro: 0,
   symBX: 0,
   symBY: 0,
+  symBTrenza: 0,
   symBModo: 'tinta',
   colorFondo: '#F6F4EF',
   colorTinta: '#101012',
@@ -234,7 +238,7 @@ export const PRESETS: Preset[] = [
     nombre: 'Caudal',
     descripcion: 'Marca de bandera: cinco ondas en fase',
     mode: 'symbol',
-    params: { symTipo: 'onda', symLineas: 5, symGrosor: 60, symCurva: 50, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'onda', symLineas: 5, symGrosor: 100, symCurva: 50, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Creciente',
@@ -246,61 +250,61 @@ export const PRESETS: Preset[] = [
     nombre: 'Vuelo',
     descripcion: 'Haz radial de líneas finas',
     mode: 'symbol',
-    params: { symTipo: 'ala', symLineas: 11, symGrosor: 22, symCurva: 55, symEscala: 66, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'ala', symLineas: 11, symGrosor: 5, symCurva: 55, symEscala: 66, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Puerta',
     descripcion: 'Arcos anidados, trazo grueso',
     mode: 'symbol',
-    params: { symTipo: 'arcos', symLineas: 4, symGrosor: 60, symCurva: 45, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'arcos', symLineas: 4, symGrosor: 100, symCurva: 45, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Trenza',
     descripcion: 'Dos caudales tejidos con calado de papel',
     mode: 'symbol',
-    params: { symTipo: 'cruce', symLineas: 6, symGrosor: 45, symCurva: 40, symEscala: 60, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'cruce', symLineas: 6, symGrosor: 100, symCurva: 40, symEscala: 60, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Órbita',
     descripcion: 'Elipses que giran alrededor del centro — esfera de líneas',
     mode: 'symbol',
-    params: { symTipo: 'orbita', symLineas: 6, symGrosor: 30, symCurva: 45, symEscala: 66, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'orbita', symLineas: 6, symGrosor: 8, symCurva: 45, symEscala: 66, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Concha',
     descripcion: 'Elipses ancladas a la base que crecen e inclinan',
     mode: 'symbol',
-    params: { symTipo: 'concha', symLineas: 7, symGrosor: 28, symCurva: 55, symEscala: 64, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'concha', symLineas: 7, symGrosor: 8, symCurva: 55, symEscala: 64, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Cinta',
     descripcion: 'Franjas gruesas que doblan el codo — vertical a horizontal',
     mode: 'symbol',
-    params: { symTipo: 'codo', symLineas: 4, symGrosor: 62, symCurva: 30, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
+    params: { symTipo: 'codo', symLineas: 4, symGrosor: 100, symCurva: 30, symEscala: 62, symGiro: 0, symRemate: 'recto', semilla: 2049 },
   },
   {
     nombre: 'Ojo',
     descripcion: 'Anillo + ondas que lo cruzan — la mirada del cauce',
     mode: 'symbol',
-    params: { symTipo: 'aro', symLineas: 1, symGrosor: 24, symCurva: 0, symEscala: 62, symGiro: 0, symX: 0, symY: 0, symRemate: 'recto', symB: true, symBTipo: 'onda', symBLineas: 3, symBGrosor: 26, symBCurva: 50, symBEscala: 46, symBGiro: 0, symBX: 0, symBY: 0, symBModo: 'tinta', semilla: 2049 },
+    params: { symTipo: 'aro', symLineas: 1, symGrosor: 24, symCurva: 0, symEscala: 62, symGiro: 0, symX: 0, symY: 0, symRemate: 'recto', symB: true, symBTipo: 'onda', symBLineas: 3, symBGrosor: 60, symBCurva: 50, symBEscala: 46, symBGiro: 0, symBX: 0, symBY: 0, symBModo: 'tinta', semilla: 2049 },
   },
   {
     nombre: 'Eco',
     descripcion: 'Aros en C + contraforma desplazada — interferencia',
     mode: 'symbol',
-    params: { symTipo: 'aro', symLineas: 4, symGrosor: 62, symCurva: 14, symEscala: 62, symGiro: 0, symX: -6, symY: 0, symRemate: 'recto', symB: true, symBTipo: 'aro', symBLineas: 4, symBGrosor: 55, symBCurva: 0, symBEscala: 52, symBGiro: 0, symBX: 20, symBY: 0, symBModo: 'contraforma', semilla: 2049 },
+    params: { symTipo: 'aro', symLineas: 4, symGrosor: 85, symCurva: 14, symEscala: 62, symGiro: 0, symX: -6, symY: 0, symRemate: 'recto', symB: true, symBTipo: 'aro', symBLineas: 4, symBGrosor: 75, symBCurva: 0, symBEscala: 52, symBGiro: 0, symBX: 20, symBY: 0, symBModo: 'contraforma', semilla: 2049 },
   },
   {
     nombre: 'Delta',
     descripcion: 'El caudal se ramifica en canales y dibuja la C',
     mode: 'symbol',
-    params: { symTipo: 'delta', symLineas: 7, symGrosor: 55, symCurva: 70, symEscala: 64, symGiro: 0, symX: 0, symY: 0, symRemate: 'recto', symB: false, semilla: 2049 },
+    params: { symTipo: 'delta', symLineas: 7, symGrosor: 45, symCurva: 60, symEscala: 66, symGiro: 0, symX: 0, symY: 0, symTrenza: 70, symRemate: 'recto', symB: false, semilla: 2049 },
   },
   {
     nombre: 'Mirada',
     descripcion: 'Dos arcos enfrentados — el párpado del canal',
     mode: 'symbol',
-    params: { symTipo: 'arcos', symLineas: 3, symGrosor: 58, symCurva: 50, symEscala: 58, symGiro: 0, symX: 0, symY: -7, symRemate: 'recto', symB: true, symBTipo: 'arcos', symBLineas: 3, symBGrosor: 58, symBCurva: 50, symBEscala: 58, symBGiro: 180, symBX: 0, symBY: 7, symBModo: 'tinta', semilla: 2049 },
+    params: { symTipo: 'arcos', symLineas: 3, symGrosor: 100, symCurva: 50, symEscala: 58, symGiro: 0, symX: 0, symY: -7, symRemate: 'recto', symB: true, symBTipo: 'arcos', symBLineas: 3, symBGrosor: 58, symBCurva: 50, symBEscala: 58, symBGiro: 180, symBX: 0, symBY: 7, symBModo: 'tinta', semilla: 2049 },
   },
 ];
 
@@ -332,6 +336,7 @@ export const RANGES: Record<string, Range> = {
   symGiro:   { min: 0,  max: 360, step: 1, unit: '°' },
   symX:      { min: -50, max: 50, step: 1, unit: '' },
   symY:      { min: -50, max: 50, step: 1, unit: '' },
+  symTrenza: { min: 0,   max: 100, step: 1, unit: '' },
   symBLineas: { min: 1,  max: 12,  step: 1, unit: '' },
   symBGrosor: { min: 5,  max: 100, step: 1, unit: '' },
   symBCurva:  { min: 0,  max: 100, step: 1, unit: '' },
@@ -339,6 +344,7 @@ export const RANGES: Record<string, Range> = {
   symBGiro:   { min: 0,  max: 360, step: 1, unit: '°' },
   symBX:      { min: -50, max: 50, step: 1, unit: '' },
   symBY:      { min: -50, max: 50, step: 1, unit: '' },
+  symBTrenza: { min: 0,   max: 100, step: 1, unit: '' },
 };
 
 /** Gamas cromáticas predefinidas — puntos de partida, no límites (v0). */
@@ -417,6 +423,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('symGiro', RANGES.symGiro);
   num('symX', RANGES.symX);
   num('symY', RANGES.symY);
+  num('symTrenza', RANGES.symTrenza);
   if (typeof o.symB === 'boolean') p.symB = o.symB;
   if (symKind(o.symBTipo)) p.symBTipo = o.symBTipo;
   if (o.symBModo === 'tinta' || o.symBModo === 'contraforma') p.symBModo = o.symBModo;
@@ -427,6 +434,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('symBGiro', RANGES.symBGiro);
   num('symBX', RANGES.symBX);
   num('symBY', RANGES.symBY);
+  num('symBTrenza', RANGES.symBTrenza);
   if (typeof o.vivo === 'boolean') p.vivo = o.vivo;
   num('motionSegundos', { min: 1, max: 15, step: 1 });
   if (typeof o.motionLoop === 'boolean') p.motionLoop = o.motionLoop;
