@@ -104,10 +104,10 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const rotStep = ((6 + rnd() * 12) * Math.PI) / 180;
       const base = rnd() * TAU;
       const width = n > 1 ? Math.min(rStep * 0.85, wGlobal) : wGlobal;
-      const sway = Math.sin(TAU * phase) * 0.06;
       for (let i = 0; i < n; i++) {
         const r = r0 + i * rStep;
-        const a0 = base + i * rotStep + sway * (i / n);
+        // la corriente recorre el abanico: cada arco oscila desfasado
+        const a0 = base + i * rotStep + Math.sin(TAU * phase + i * 0.9) * 0.1;
         const sw = sweep * (1 - i * 0.045);
         const pts: Array<[number, number]> = [];
         const steps = 56;
@@ -134,7 +134,8 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
         const t = n > 1 ? i / (full ? n : n - 1) : 0.5;
         const ang = -Math.PI / 2 + (t - 0.5) * spread;
         const len = S * (0.86 - 0.38 * tOpen) * (0.84 + rnd() * 0.22);
-        const bendMag = A * S * 0.13 * Math.abs(t - 0.5) * 2;
+        const bendMag = A * S * 0.13 * Math.abs(t - 0.5) * 2
+          * (1 + 0.25 * Math.sin(TAU * phase + t * TAU)); // la comba viaja por el haz
         const bendSign = t < 0.5 ? -1 : 1;
         const dirX = Math.cos(ang), dirY = Math.sin(ang);
         const perX = -dirY * bendSign, perY = dirX * bendSign;
@@ -157,10 +158,10 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const rStep = n > 1 ? (S * 0.52 - r0) / (n - 1) : 0;
       const sweep = ((110 + A * 80) * Math.PI) / 180;
       const width = n > 1 ? Math.min(rStep * 0.85, wGlobal) : wGlobal;
-      const sway = Math.sin(TAU * phase) * 0.03;
       for (let i = 0; i < n; i++) {
-        const r = r0 + i * rStep;
-        const off = (rnd() - 0.5) * 0.10 + sway * (i / n);
+        // los arcos respiran en cascada, como olas que llegan
+        const r = (r0 + i * rStep) * (1 + 0.035 * Math.sin(TAU * phase + i * 1.1));
+        const off = (rnd() - 0.5) * 0.10 + Math.sin(TAU * phase + i * 0.7) * 0.05;
         const a0 = -Math.PI / 2 - sweep / 2 + off;
         const pts: Array<[number, number]> = [];
         const steps = 48;
@@ -181,12 +182,13 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       // CURVA abre la boca de la C: 0 = anillo completo, 100 ≈ 150° de apertura
       const gap = A * 0.85 * Math.PI;
       const width = n > 1 ? Math.min(pitch * 0.6, wGlobal) : wGlobal;
-      const sway = Math.sin(TAU * phase) * 0.04;
+      // la boca de la C orbita el anillo: vuelta completa por ciclo (sin costura)
+      const orbita = TAU * phase;
       for (let i = 0; i < n; i++) {
         const r = n > 1 ? rMax - i * pitch : rMax * 0.92;
         const jit = (rnd() - 0.5) * 0.06;
-        const a0 = gap / 2 + jit + sway * (i / Math.max(1, n));
-        const a1 = TAU - gap / 2 + jit;
+        const a0 = gap / 2 + jit + orbita * (i % 2 === 0 ? 1 : -1);
+        const a1 = TAU - gap / 2 + jit + orbita * (i % 2 === 0 ? 1 : -1);
         const pts: Array<[number, number]> = [];
         const steps = 72;
         for (let s = 0; s <= steps; s++) {
@@ -226,12 +228,12 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       const ax = -S * 0.05, ay = S * 0.36;
       const maxTilt = ((20 + A * 45) * Math.PI) / 180;
       const width = wGlobal;
-      const sway = Math.sin(TAU * phase) * 0.05;
       for (let i = 0; i < n; i++) {
         const t = n > 1 ? i / (n - 1) : 1;
         const a = S * (0.2 + 0.36 * t);
         const b = a * (0.5 + rnd() * 0.06);
-        const phi = t * maxTilt + sway * t;
+        // la marea recorre la concha: cada vuelta cabecea desfasada
+        const phi = t * maxTilt + Math.sin(TAU * phase + t * 2.4) * 0.09 * t;
         const cosP = Math.cos(phi), sinP = Math.sin(phi);
         const cx0 = ax + sinP * b;
         const cy0 = ay - cosP * b;
@@ -308,7 +310,7 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
         return c * c * (3 - 2 * c);
       };
 
-      const breathe = 1 + Math.sin(TAU * phase) * 0.06;
+      const breathe = 1 + Math.sin(TAU * phase) * 0.12;
       for (let k = 0; k < lanes.length; k++) {
         const t = lanes[k];
         const yLane = t * pitchLane * (1 + (rnd() - 0.5) * 0.05);
@@ -342,16 +344,23 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
     // unión: 0 = redondeada (elipse, cuerda enrollada); 100 = vértice
     // (lágrima con cúspide: ojo, gota, pétalo).
     case 'espira': {
+      // Familia de MÖBIUS: cada vuelta vive en una fase g de un ciclo continuo
+      // — el óvalo gira en 3D (se aplasta hasta línea y se reabre, |cos πg|),
+      // crece y decrece (sin πg) y su plano oscila. En el bucle, la vuelta i
+      // ocupa el lugar de la i+1 → morphing perpetuo SIN COSTURA: los óvalos
+      // en movimiento generan ojos, líneas y lunas al pasar.
       const width = wGlobal;
       const tipX = S * 0.42;                       // el punto de unión común
-      const aspect = 0.3 + A * 0.5;                // CURVA: aplastamiento del óvalo
+      const aspect = 0.3 + A * 0.5;                // CURVA: aplastamiento base
       const pShape = (cfg.punta / 100) * 1.7;      // PUNTA: exponente de la cúspide
-      const rotStep = ((4 + rnd() * 8) * Math.PI) / 180;
-      const sway = Math.sin(TAU * phase) * 0.05;
+      const maxFan = ((8 + rnd() * 10) * Math.PI) / 180;
+      const jit = rnd() * 0.2;                     // fase inicial sembrada
       for (let i = 0; i < n; i++) {
-        const a = S * 0.5 * (n > 1 ? 0.34 + (0.66 * (i + 1)) / n : 1) * (0.97 + rnd() * 0.06);
-        const b = a * aspect;
-        const rot = (i - (n - 1) / 2) * rotStep + sway * (i / Math.max(1, n));
+        const g = (((i + phase) / n + jit) % 1 + 1) % 1; // posición en el ciclo
+        const rot = maxFan * Math.sin(TAU * g) * 3;      // el plano oscila
+        const squash = 0.15 + 0.85 * Math.abs(Math.cos(Math.PI * g)); // giro 3D
+        const a = S * 0.5 * (0.62 + 0.36 * Math.sin(Math.PI * g));    // crece y decrece
+        const b = a * Math.max(0.05, aspect * squash);
         const cosR = Math.cos(rot), sinR = Math.sin(rot);
         const pts: Array<[number, number]> = [];
         const steps = 88;
