@@ -302,6 +302,7 @@ const SLIDER_META: Record<string, { name: string; desc: string }> = {
   calado: { name: 'CALADO', desc: 'Grosor de línea' },
   marea: { name: 'MAREA', desc: 'Amplitud de la ondulación' },
   orillas: { name: 'ORILLAS', desc: 'Zona de calma en los bordes' },
+  ribera: { name: 'RIBERA', desc: 'Las líneas se doblan antes del borde — calas de papel (0 = nada)' },
   deriva: { name: 'DERIVA', desc: 'Rotación de la 2ª trama, 0–360° (0 = sin moiré)' },
   torsion: { name: 'TORSIÓN', desc: 'Cizalla de fase entre líneas — la trama gira en 3D' },
   retratoLongitud: { name: 'LONGITUD', desc: 'Longitud de onda del trazo — corta y nerviosa ↔ larga y serena' },
@@ -527,7 +528,7 @@ function buildPanel(): void {
   panel.appendChild(group('Flujo', [slider('curso'), slider('caudal'), slider('cauce'), slider('corriente'), slider('torsion')]));
 
   // LÍNEA
-  panel.appendChild(group('Línea', [slider('calado'), slider('marea'), slider('orillas'), slider('deriva')]));
+  panel.appendChild(group('Línea', [slider('calado'), slider('marea'), slider('orillas'), slider('ribera'), slider('deriva')]));
   }
 
   // SEMILLA

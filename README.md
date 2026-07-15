@@ -58,7 +58,8 @@ Abre `http://localhost:5173`.
 | **TORSIÓN** | Cizalla de fase entre líneas — la trama gira como tela en 3D |
 | **CALADO** | Grosor de línea (y contraste del duotono en RETRATO) |
 | **MAREA** | Amplitud de la ondulación |
-| **ORILLAS** | Zona de calma en los bordes |
+| **ORILLAS** | Zona de calma en los bordes (funde el grosor) |
+| **RIBERA** | Repulsión del borde: las líneas se doblan hacia dentro y dejan calas de papel |
 | **DERIVA** | Rotación de la 2ª trama para moiré, 0–360° (0 = sin moiré), con color propio |
 | **SEMILLA** | Seed del PRNG (determinista, reproducible) |
 

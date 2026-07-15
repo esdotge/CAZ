@@ -15,6 +15,7 @@ export interface TornoParams {
   calado: number;     // Grosor de línea (y contraste duotono en RETRATO) · 0.25–4 px
   marea: number;      // Amplitud de la ondulación de cada línea · 0–100
   orillas: number;    // Márgenes / zona de calma en los bordes · 0–20%
+  ribera: number;     // Repulsión del borde: las líneas se doblan y no lo tocan · 0–100
   deriva: number;     // Rotación de la 2ª trama para moiré · 0–360° (0 = sin moiré)
   semilla: number;    // Seed del PRNG · entero
 
@@ -106,6 +107,7 @@ export const DEFAULTS: TornoParams = {
   calado: 1.4,
   marea: 34,
   orillas: 6,
+  ribera: 0,
   deriva: 0,
   torsion: 0,
   semilla: 2049,
@@ -214,13 +216,19 @@ export const PRESETS: Preset[] = [
     nombre: 'Bitinta',
     descripcion: 'Dos planchas: la 2ª trama en agua, moiré de billete',
     mode: 'patron',
-    params: { curso: 8, caudal: 190, cauce: 45, corriente: 14, torsion: 0, calado: 0.9, marea: 30, deriva: 14, colorDeriva: '#177E70', orillas: 6, semilla: 3777 },
+    params: { curso: 8, caudal: 220, cauce: 45, corriente: 14, torsion: 0, calado: 0.9, marea: 22, deriva: 24, colorDeriva: '#177E70', orillas: 4, semilla: 3777 },
   },
   {
     nombre: 'Remanso',
     descripcion: 'Aguas quietas: ondas largas, corriente mínima',
     mode: 'patron',
     params: { curso: 0, caudal: 90, cauce: 12, corriente: 4, torsion: 0, calado: 1.2, marea: 55, deriva: 0, orillas: 8, semilla: 8241 },
+  },
+  {
+    nombre: 'Ribera',
+    descripcion: 'Las líneas se doblan antes del borde — calas de papel',
+    mode: 'patron',
+    params: { curso: 0, caudal: 210, cauce: 55, corriente: 26, torsion: 0, calado: 0.8, marea: 42, deriva: 0, orillas: 0, ribera: 88, semilla: 5511 },
   },
   {
     nombre: 'Rápidos',
@@ -365,6 +373,7 @@ export const RANGES: Record<string, Range> = {
   calado:    { min: 0.25, max: 4,   step: 0.05, unit: 'px' },
   marea:     { min: 0,    max: 100, step: 1,    unit: '' },
   orillas:   { min: 0,    max: 20,  step: 0.5,  unit: '%' },
+  ribera:    { min: 0,    max: 100, step: 1,    unit: '' },
   deriva:    { min: 0,    max: 360, step: 1,    unit: '°' },
   torsion:   { min: 0,    max: 100, step: 1,    unit: '' },
   retratoLongitud:   { min: 5,    max: 100, step: 1, unit: '' },
@@ -435,6 +444,7 @@ export function coerceParams(input: unknown): TornoParams {
   num('calado', RANGES.calado);
   num('marea', RANGES.marea);
   num('orillas', RANGES.orillas);
+  num('ribera', RANGES.ribera);
   num('deriva', RANGES.deriva);
   num('torsion', RANGES.torsion);
   num('retratoLongitud', RANGES.retratoLongitud);

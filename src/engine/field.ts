@@ -98,6 +98,18 @@ export class FlowEngine {
     // Zona de calma.
     const band = (p.orillas / 100) * Math.min(W, H);
 
+    // RIBERA: repulsión del borde — las líneas se DOBLAN hacia dentro antes
+    // de tocarlo (0 = nada; 100 = nada roza el borde), dejando calas de papel.
+    // Compresión asintótica suave (exponencial): monótona, sin pliegues duros.
+    const rib = p.ribera / 100;
+    const ribBand = Math.min(W, H) * 0.22;
+    const ribFloor = ribBand * 0.45; // nada baja de aquí con ribera al 100
+    const press = (dist: number): number => {
+      if (dist >= ribBand) return dist;
+      const soft = ribFloor + (ribBand - ribFloor) * Math.exp((dist - ribBand) / (ribBand - ribFloor));
+      return dist + rib * (soft - dist);
+    };
+
     // Paso de muestreo: más fino con más marea/corriente.
     const du = Math.max(3.5, 7 - (p.corriente / 100) * 3);
 
@@ -149,8 +161,16 @@ export class FlowEngine {
           : 0;
         const v = v0 + flowMag + tor;
 
-        const x = CX + u * dx + v * nx;
-        const y = CY + u * dy + v * ny;
+        let x = CX + u * dx + v * nx;
+        let y = CY + u * dy + v * ny;
+
+        // RIBERA: compresión suave hacia el interior, por los cuatro bordes
+        if (rib > 0.001) {
+          x = press(x);
+          x = W - press(W - x);
+          y = press(y);
+          y = H - press(H - y);
+        }
 
         // Recorte holgado: el viewBox/clip del SVG afina el borde.
         if (x < -40 || x > W + 40 || y < -40 || y > H + 40) {
