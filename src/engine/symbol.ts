@@ -270,44 +270,42 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       break;
     }
 
-    // ---------------- DELTA: el caudal se ramifica y dibuja la C ----------------
-    // Tronco horizontal desde la izquierda; las ramas nacen escalonadas (las
-    // exteriores antes — de menos a más) con tangente horizontal al salir y
-    // radial al llegar; los remates caen sobre un arco: la silueta de la C.
+    // ---------------- DELTA: el caudal se ramifica, se entrelaza y dibuja la C ----------------
+    // Tronco horizontal desde la izquierda; los canales nacen tangenciales al
+    // tronco (los exteriores antes — de menos a más) y ENVUELVEN por arriba y
+    // por abajo hasta la boca, abierta a la derecha: la C. Los centros de cada
+    // arco van ligeramente desplazados para que los cauces se crucen cerca del
+    // lomo, y el rebaje de papel teje los cruces (sobre-bajo).
     case 'delta': {
-      const width = Math.max(S * 0.014, S * 0.06 * G);
-      const x0 = -S * 0.52;  // arranque del caudal
-      const xb = -S * 0.04;  // zona de ramificación (la rama central parte aquí)
-      const c0x = -S * 0.06; // centro del arco de remates
-      const rEnd = S * 0.53;
-      const maxA = ((28 + A * 62) * Math.PI) / 180; // apertura del abanico (CURVA cierra la C)
-      const breathe = 1 + Math.sin(TAU * phase) * 0.04;
+      const width = Math.max(S * 0.012, S * 0.055 * G);
+      const mouth = ((58 - A * 44) * Math.PI) / 180; // CURVA cierra la boca de la C
+      const hasCenter = n % 2 === 1;
+      const pairs = Math.floor(n / 2);
+      const rMin = S * 0.32; // conchas próximas: los canales conviven y se rozan
+      const rMax = S * 0.5;
+      const breathe = 1 + Math.sin(TAU * phase) * 0.03;
 
-      // tronco
-      strokes.push({ d: pathFrom([pt(x0, 0), pt(xb + width * 0.4, 0)]), width });
+      // tronco: entra por la izquierda; si hay canal central, desemboca por la boca
+      const trunkEnd = hasCenter ? S * 0.52 : width * 0.5;
+      strokes.push({ d: pathFrom([pt(-S * 0.55, 0), pt(trunkEnd, 0)]), width });
 
-      for (let i = 0; i < n; i++) {
-        const tt = n > 1 ? (i / (n - 1)) * 2 - 1 : 0; // -1..1
-        const ang = tt * maxA * breathe + (rnd() - 0.5) * 0.03;
-        // salida escalonada: cuanto más exterior, antes nace del tronco
-        const xd = xb - Math.abs(tt) * S * 0.22;
-        const p0x = xd, p0y = 0;
-        const p3x = c0x + Math.cos(ang) * rEnd;
-        const p3y = Math.sin(ang) * rEnd;
-        // Bézier cúbica: sale horizontal, llega radial (geométrico-orgánico)
-        const c1x = p0x + (p3x - p0x) * 0.42, c1y = 0;
-        const c2x = c0x + Math.cos(ang) * rEnd * 0.68;
-        const c2y = Math.sin(ang) * rEnd * 0.68;
-        const pts: Array<[number, number]> = [];
-        const steps = 36;
-        for (let j = 0; j <= steps; j++) {
-          const u = j / steps;
-          const v = 1 - u;
-          const bx = v * v * v * p0x + 3 * v * v * u * c1x + 3 * v * u * u * c2x + u * u * u * p3x;
-          const by = v * v * v * p0y + 3 * v * v * u * c1y + 3 * v * u * u * c2y + u * u * u * p3y;
-          pts.push(pt(bx, by));
+      for (let j = 0; j < pairs; j++) {
+        const r = pairs > 1 ? rMax - (j * (rMax - rMin)) / (pairs - 1) : rMax;
+        for (const dir of [-1, 1] as const) {
+          // el centro se desplaza HACIA el lado contrario: el canal superior e
+          // inferior del mismo par se cruzan cerca del lomo — entrelazado real
+          const cyOff = -dir * S * (0.035 + rnd() * 0.03);
+          const rr = r * (0.97 + rnd() * 0.06);
+          const sweep = (Math.PI - mouth) * breathe;
+          const pts: Array<[number, number]> = [];
+          const steps = 60;
+          for (let s = 0; s <= steps; s++) {
+            const u = Math.pow(s / steps, 1.3); // arranque suave, tangencial al tronco
+            const th = Math.PI + dir * sweep * u;
+            pts.push(pt(Math.cos(th) * rr, cyOff + Math.sin(th) * rr));
+          }
+          strokes.push({ d: pathFrom(pts), width, casing: true });
         }
-        strokes.push({ d: pathFrom(pts), width });
       }
       break;
     }

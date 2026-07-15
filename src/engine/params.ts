@@ -294,7 +294,7 @@ export const PRESETS: Preset[] = [
     nombre: 'Delta',
     descripcion: 'El caudal se ramifica en canales y dibuja la C',
     mode: 'symbol',
-    params: { symTipo: 'delta', symLineas: 5, symGrosor: 55, symCurva: 70, symEscala: 64, symGiro: 0, symX: 0, symY: 0, symRemate: 'recto', symB: false, semilla: 2049 },
+    params: { symTipo: 'delta', symLineas: 7, symGrosor: 55, symCurva: 70, symEscala: 64, symGiro: 0, symX: 0, symY: 0, symRemate: 'recto', symB: false, semilla: 2049 },
   },
   {
     nombre: 'Mirada',
