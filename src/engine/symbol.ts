@@ -355,8 +355,6 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
       // profundidad por bins con atenuación. El bucle avanza MEDIA torsión
       // por ciclo: la banda sin orientación cae sobre sí misma — sin costura.
       const width = wGlobal;
-      const currents = Math.min(25, 2 * n + 1);        // LÍNEAS → corrientes (impar)
-      const sideCount = (currents - 1) / 2;
       const halfTwists = 1 + 2 * Math.round((cfg.trenza / 100) * 2); // TRENZA → 1,3,5
       const cycle = TAU * (((phase % 1) + 1) % 1);
       const stripW = (0.16 + A * 0.56) * (1 + 0.07 * Math.sin(cycle)); // CURVA → anchura (respira)
@@ -416,10 +414,12 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
         flushRun();
       };
 
-      // la corriente central exacta (v = 0) es un círculo inmóvil por
-      // construcción — medio paso fuera del eje TODO fluye con la torsión
-      for (let i = 0; i <= sideCount; i++) {
-        const v = (stripW * (i + 0.5)) / (sideCount + 0.5);
+      // LÍNEAS = corrientes reales, 1:1. Cada corriente es UNA línea cerrada
+      // que, por la topología de Möbius, envuelve la banda DOS veces (dos
+      // óvalos por línea — el mínimo irreducible). Ninguna va en el eje
+      // exacto (v = 0 sería un círculo inmóvil): todas fluyen con la torsión.
+      for (let i = 0; i < n; i++) {
+        const v = (stripW * (i + 0.5)) / n;
         addCurrent(v, 2, 288);
       }
 
