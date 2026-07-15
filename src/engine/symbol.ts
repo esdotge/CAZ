@@ -344,37 +344,36 @@ function buildLayer(cfg: LayerCfg, view: View, phase: number): SymbolStroke[] {
     // unión: 0 = redondeada (elipse, cuerda enrollada); 100 = vértice
     // (lágrima con cúspide: ojo, gota, pétalo).
     case 'espira': {
-      // Familia de MÖBIUS: cada vuelta vive en una fase g de un ciclo continuo
-      // — el óvalo gira en 3D (se aplasta hasta línea y se reabre, |cos πg|),
-      // crece y decrece (sin πg) y su plano oscila. En el bucle, la vuelta i
-      // ocupa el lugar de la i+1 → morphing perpetuo SIN COSTURA: los óvalos
-      // en movimiento generan ojos, líneas y lunas al pasar.
+      // CINTA DE MÖBIUS continua: UN solo trazo cerrado recorre las n vueltas
+      // y se une consigo mismo — principio y final son el mismo punto, la
+      // cinta es infinita. A lo largo del recorrido la torsión evoluciona:
+      // el óvalo gira en 3D (se aplasta hasta línea y se reabre, |cos πw|),
+      // crece y decrece, y su plano oscila. En MOVIMIENTO la torsión VIAJA
+      // por la cinta (w = u + fase): bucle perpetuo sin costura.
       const width = wGlobal;
-      const tipX = S * 0.42;                       // el punto de unión común
+      const tipX = S * 0.42;                       // la cintura de la cinta
       const aspect = 0.3 + A * 0.5;                // CURVA: aplastamiento base
-      const pShape = (cfg.punta / 100) * 1.7;      // PUNTA: exponente de la cúspide
-      const maxFan = ((8 + rnd() * 10) * Math.PI) / 180;
-      const jit = rnd() * 0.2;                     // fase inicial sembrada
-      for (let i = 0; i < n; i++) {
-        const g = (((i + phase) / n + jit) % 1 + 1) % 1; // posición en el ciclo
-        const rot = maxFan * Math.sin(TAU * g) * 3;      // el plano oscila
-        const squash = 0.15 + 0.85 * Math.abs(Math.cos(Math.PI * g)); // giro 3D
-        const a = S * 0.5 * (0.62 + 0.36 * Math.sin(Math.PI * g));    // crece y decrece
+      const pShape = (cfg.punta / 100) * 1.6;      // PUNTA: cúspide en AMBOS extremos
+      const maxFan = ((10 + rnd() * 12) * Math.PI) / 180;
+      const phiA = rnd() * TAU;
+      const steps = 88 * n;
+      const pts: Array<[number, number]> = [];
+      for (let j = 0; j <= steps; j++) {
+        const u = j / steps;            // 0..1 — la cinta entera
+        const th = u * n * TAU;         // n vueltas
+        const w = u + phase;            // la torsión viaja por la cinta
+        const rot = maxFan * Math.sin(TAU * w + phiA) * 1.1;
+        const squash = 0.32 + 0.68 * Math.abs(Math.cos(Math.PI * w));
+        const a = S * 0.5 * (0.86 + 0.12 * Math.cos(TAU * w + phiA * 0.7));
         const b = a * Math.max(0.05, aspect * squash);
+        // ojo: el pellizco actúa en los DOS extremos (th = 0 y th = π)
+        const pinch = pShape > 0.01 ? Math.pow(Math.abs(Math.sin(th)), pShape) : 1;
+        const ex = a * (Math.cos(th) - 1); // la cintura queda en (0,0) local
+        const ey = b * Math.sin(th) * pinch;
         const cosR = Math.cos(rot), sinR = Math.sin(rot);
-        const pts: Array<[number, number]> = [];
-        const steps = 88;
-        for (let j = 0; j <= steps; j++) {
-          const th = (j / steps) * TAU;
-          // lágrima: y se pellizca hacia 0 en la unión (th = 0 / 2π)
-          const pinch = pShape > 0.01 ? Math.pow(Math.abs(Math.sin(th / 2)), pShape) : 1;
-          const ex = a * (Math.cos(th) - 1); // la unión queda en (0,0) local
-          const ey = b * Math.sin(th) * pinch;
-          // rotar alrededor de la unión y llevar al punto común
-          pts.push(pt(tipX + ex * cosR - ey * sinR, ex * sinR + ey * cosR));
-        }
-        strokes.push({ d: pathFrom(pts) + 'Z', width });
+        pts.push(pt(tipX + ex * cosR - ey * sinR, ex * sinR + ey * cosR));
       }
+      strokes.push({ d: pathFrom(pts) + 'Z', width });
       break;
     }
 

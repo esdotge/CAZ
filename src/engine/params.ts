@@ -312,7 +312,7 @@ export const PRESETS: Preset[] = [
   },
   {
     nombre: 'Gota',
-    descripcion: 'Pétalos con vértice — ojo y gota desde el mismo punto',
+    descripcion: 'Ojos anidados: vértice en ambos extremos de la cinta',
     mode: 'symbol',
     params: { symTipo: 'espira', symLineas: 3, symGrosor: 40, symCurva: 60, symEscala: 66, symGiro: 0, symX: 0, symY: 0, symTrenza: 0, symPunta: 100, symRemate: 'recto', symB: false, semilla: 2049 },
   },
