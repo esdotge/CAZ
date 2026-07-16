@@ -94,10 +94,13 @@ Paleta de marca CAUCE:
 
 Tres tintas en hex — **FONDO** (papel), **TINTA** (trama principal y grabado)
 y **DERIVA** (2ª trama del moiré) — cada una con recuadro de color y campo
-hexadecimal sincronizados. Seis **gamas predefinidas** construidas sólo con
-los cuatro colores de marca: **Tinta** (base), **Noche** (inverso), **Lima**
-(acento sobre oscuro), **Señal** (moiré lima sobre papel), **Bruma** (fondo
-secundario) y **Contraluz** (lima de fondo). El campo hex sigue admitiendo
+hexadecimal sincronizados. Catorce **gamas predefinidas** construidas sólo
+con los cuatro colores de marca, agrupadas por fondo — sobre papel: **Tinta**
+(base), **Señal** (moiré lima), **Vado** (moiré bruma, quieto) y **Niebla**
+(tonal suave, para fondos); sobre tinta: **Noche**, **Espuma** (chispa lima),
+**Lima**, **Faro** (lima + bruma) y **Poza** (agua honda); sobre bruma:
+**Bruma** y **Marea** (acento lima); sobre lima: **Contraluz**, **Cal**
+(velado) y **Junco** (el papel talla). El campo hex sigue admitiendo
 cualquier color para explorar; los colores viajan en la receta JSON.
 
 ## Lienzo

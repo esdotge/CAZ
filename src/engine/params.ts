@@ -444,12 +444,24 @@ export interface Gama {
 // Paleta de marca CAUCE: tinta #262929 · papel #F0F6F5 · lima #FBFD9D ·
 // bruma #C2CFCF. Todas las gamas se construyen sólo con estos cuatro.
 export const GAMAS: Gama[] = [
+  // --- sobre papel ---
   { nombre: 'Tinta',    fondo: '#F0F6F5', tinta: '#262929', deriva: '#262929' },
-  { nombre: 'Noche',    fondo: '#262929', tinta: '#F0F6F5', deriva: '#C2CFCF' },
-  { nombre: 'Lima',     fondo: '#262929', tinta: '#FBFD9D', deriva: '#FBFD9D' },
   { nombre: 'Señal',    fondo: '#F0F6F5', tinta: '#262929', deriva: '#FBFD9D' },
+  { nombre: 'Vado',     fondo: '#F0F6F5', tinta: '#262929', deriva: '#C2CFCF' }, // moiré quieto
+  { nombre: 'Niebla',   fondo: '#F0F6F5', tinta: '#C2CFCF', deriva: '#C2CFCF' }, // tonal suave: fondos y texturas
+  // --- sobre tinta ---
+  { nombre: 'Noche',    fondo: '#262929', tinta: '#F0F6F5', deriva: '#C2CFCF' },
+  { nombre: 'Espuma',   fondo: '#262929', tinta: '#F0F6F5', deriva: '#FBFD9D' }, // noche con chispa lima
+  { nombre: 'Lima',     fondo: '#262929', tinta: '#FBFD9D', deriva: '#FBFD9D' },
+  { nombre: 'Faro',     fondo: '#262929', tinta: '#FBFD9D', deriva: '#C2CFCF' }, // lima que emerge de la bruma
+  { nombre: 'Poza',     fondo: '#262929', tinta: '#C2CFCF', deriva: '#F0F6F5' }, // agua quieta y honda
+  // --- sobre bruma ---
   { nombre: 'Bruma',    fondo: '#C2CFCF', tinta: '#262929', deriva: '#F0F6F5' },
+  { nombre: 'Marea',    fondo: '#C2CFCF', tinta: '#262929', deriva: '#FBFD9D' }, // acento lima en la bruma
+  // --- sobre lima ---
   { nombre: 'Contraluz', fondo: '#FBFD9D', tinta: '#262929', deriva: '#262929' },
+  { nombre: 'Cal',      fondo: '#FBFD9D', tinta: '#262929', deriva: '#C2CFCF' }, // contraluz velado
+  { nombre: 'Junco',    fondo: '#FBFD9D', tinta: '#262929', deriva: '#F0F6F5' }, // el papel talla la lima
 ];
 
 /** Valida un color hex #RRGGBB. */
