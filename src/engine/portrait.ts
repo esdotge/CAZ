@@ -277,6 +277,8 @@ export function renderPortraitTo(
     withWave: boolean,
     kMul: number,
     getHalf: (dark: number, taper: number, pitch: number) => number,
+    cShift = 0,     // desplaza la familia de raíles (0.5 = interlínea a medio paso)
+    guardMul = 1,   // margen del canal blanco cuando hay interlíneas más cerca
   ): void => {
     const ux = Math.cos(thetaRad), uy = Math.sin(thetaRad);
     const nvx = -uy, nvy = ux; // normal a la línea
@@ -293,7 +295,7 @@ export function renderPortraitTo(
     const minPts = Math.max(4, Math.ceil((spacing * 3.2) / stepS));
 
     for (let li = 0; li < nSweep; li++) {
-      const cRaw = -halfExt + spacing * (li + 0.5);
+      const cRaw = -halfExt + spacing * (li + 0.5 + cShift);
       // CAUCE: warp de densidad — compresión al centro, apertura a los bordes
       let c0 = cRaw;
       let pitch = spacing;
@@ -393,7 +395,7 @@ export function renderPortraitTo(
         // paso del vecino (onda + grosor ≤ medio paso). En sombras el trazo
         // engorda y la onda se aplana — como en el grabado real; sin este
         // tope las líneas gruesas ondulantes se tocaban y granulaban la trama.
-        const ampCap = Math.max(0, pitch * 0.46 - half);
+        const ampCap = Math.max(0, pitch * 0.46 * guardMul - half);
         const amp = withWave ? Math.min(maxAmp * ampK * darkS * taper, ampCap) : 0;
         const [al, pe] = withWave ? waveVec(s + halfLen, amp, k * kMul) : [0, 0];
         const off = off0 + pe;
@@ -410,11 +412,13 @@ export function renderPortraitTo(
   const theta = (p.curso * Math.PI) / 180;
   const capas = Math.min(3, Math.max(1, Math.round(p.retratoCapas)));
 
-  // anchura AM de la trama principal (compartida con la trama de DERIVA)
+  // PLUMA DEL TORNO: grosor casi constante (respiro del 28%, no modulación AM).
+  // El tono lo llevan la GEOMETRÍA (amplitud de onda ∝ tono) y la DENSIDAD
+  // (interlíneas en sombra); CALADO fija la pluma y sigue siendo editable.
   const mainHalf = (dark: number, taper: number, pitch: number): number => {
-    let half = caladoK * (0.10 + 0.90 * dark) * pitch * 0.48;
-    half = Math.min(half, pitch * 0.44);
-    half *= smoothstep(0.012, 0.16, dark) * (0.35 + 0.65 * taper); // dropout suave en luces
+    let half = caladoK * (0.72 + 0.28 * dark) * pitch * 0.26;
+    half = Math.min(half, pitch * 0.34);
+    half *= smoothstep(0.015, 0.14, dark) * (0.35 + 0.65 * taper); // sólo el blanco corta
     return half;
   };
 
@@ -432,22 +436,26 @@ export function renderPortraitTo(
     ctx.fillStyle = ink;
   }
 
-  // ---------- capa 2: cruzada ondulada más fina y corta — crossline ----------
-  // Otra profundidad: ondula a 0.6× de longitud y traza más delgado que la
-  // principal, como el crossline del grabador (el rombo de la malla se lee).
+  // ---------- capa 2: interlínea a MEDIO PASO — sombras ----------
+  // Nada de cruces: la técnica del torno densifica, no teje. En sombra
+  // emerge una línea intermedia de la misma familia (misma dirección, mismo
+  // campo, misma fase de onda), y la trama sigue siendo 100% paralela.
   if (capas >= 2) {
-    sweep(theta + Math.PI / 2, 31.7, true, 0.6, (dark, taper, pitch) => {
-      const presence = smoothstep(0.38, 0.75, dark);
-      return Math.min(caladoK * pitch * 0.30 * presence * taper, pitch * 0.28);
-    });
+    sweep(theta, 0, true, 1, (dark, taper, pitch) => {
+      const presence = smoothstep(0.42, 0.72, dark);
+      return Math.min(caladoK * pitch * 0.11 * presence * taper, pitch * 0.085);
+    }, 0.5, 0.6);
   }
 
-  // ---------- capa 3: diagonal recta y finísima — sombras profundas ----------
+  // ---------- capa 3: interlíneas a CUARTO DE PASO — sombra profunda ----------
+  // El negro casi pleno se construye con densidad 4×, siempre con canal.
   if (capas >= 3) {
-    sweep(theta + Math.PI / 4, 63.9, false, 1, (dark, taper, pitch) => {
-      const presence = smoothstep(0.64, 0.92, dark);
-      return Math.min(caladoK * pitch * 0.22 * presence * taper, pitch * 0.20);
-    });
+    const deepHalf = (dark: number, taper: number, pitch: number): number => {
+      const presence = smoothstep(0.68, 0.93, dark);
+      return Math.min(caladoK * pitch * 0.07 * presence * taper, pitch * 0.045);
+    };
+    sweep(theta, 0, true, 1, deepHalf, 0.25, 0.32);
+    sweep(theta, 0, true, 1, deepHalf, 0.75, 0.32);
   }
 }
 

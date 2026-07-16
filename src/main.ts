@@ -831,7 +831,7 @@ function buildPanel(): void {
       capasWrap.appendChild(b);
     });
     capasCtrl.appendChild(capasWrap);
-    capasCtrl.appendChild(el('div', 'ctrl-desc', '1 línea · 2 añade cruzada en medios · 3 teje las sombras (billete)'));
+    capasCtrl.appendChild(el('div', 'ctrl-desc', '1 línea · 2 interlínea a ½ paso en sombra · 3 densidad 4× en negro — todo paralelo'));
 
     const invToggle = makeToggle('INVERTIR TONO', params.retratoInvert, (on) => {
       params.retratoInvert = on; refreshJSON(); render();

@@ -24,12 +24,13 @@ Abre `http://localhost:5173`.
   (compresión dentro / apertura fuera es la firma del sistema) y con moiré opcional
   de una 2ª trama.
 - **RETRATO** — foto → grabado de línea duotono (canvas 2D). Arrastra una imagen al
-  lienzo; se procesa **en tu navegador, nada sube a servidor**. El tono se codifica
-  en la anchura de línea a espaciado constante (halftoning AM, como el grabado de
-  billete): las líneas nunca se funden. Controles: TRAZO (onda / zigzag / recta /
+  lienzo; se procesa **en tu navegador, nada sube a servidor**. La pluma es casi constante (guilloché
+  de torno): el tono lo dibujan la geometría (amplitud de onda) y la densidad
+  (interlíneas en sombra), con canal blanco garantizado — las líneas nunca se funden. Controles: TRAZO (onda / zigzag / recta /
   **bucle** — trocoide que riza sobre sí misma en las sombras, el rizo de buril del
-  grabador), **CAPAS DE TRAMA** (1–3: cruzada ondulada en medios tonos — malla de
-  pasaporte — y tejido diagonal en sombras profundas), **CONTORNO** (campo de
+  grabador), **CAPAS DE TRAMA** (1–3: interlíneas paralelas a medio y cuarto de
+  paso que densifican las sombras — misma dirección y misma fase, nunca tejido:
+  el torno densifica, no cruza), **CONTORNO** (campo de
   tangentes: las líneas giran siguiendo las isofotas — envuelven la mejilla en
   vez de sólo abombarse),
   **DETALLE** (realce de detalle fino — claridad de grabado), RELIEVE (las líneas
@@ -121,4 +122,4 @@ alcance futuro.
 
 ---
 
-*FLOC\* · CAUCE · CAZ v0 — la línea manda, y todo fluye hacia algún sitio.*
+*FLOC\* · CAUCE · CAZ v1.1 — la línea manda, y todo fluye hacia algún sitio.*

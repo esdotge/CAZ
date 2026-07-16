@@ -245,42 +245,43 @@ export const PRESETS: Preset[] = [
     params: { curso: 355, caudal: 280, cauce: 60, corriente: 92, torsion: 22, calado: 0.6, marea: 65, deriva: 0, orillas: 4, semilla: 1930 },
   },
 
-  // --- RETRATO --- (corriente baja y cauce contenido = trazo limpio)
+  // --- RETRATO --- (guilloché de torno: pluma constante, todo paralelo,
+  // corriente/cauce a cero — la foto manda y la geometría dibuja el tono)
   {
     nombre: 'Billete',
-    descripcion: 'Grabado de banco: 3 capas, detalle alto, grano fino',
+    descripcion: 'Grabado de banco: onda serena e interlíneas en la sombra',
     mode: 'retrato',
-    params: { caudal: 300, calado: 1.1, marea: 24, corriente: 8, cauce: 25, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoLongitud: 30, retratoCapas: 3, retratoContorno: 55, retratoDetalle: 55, retratoRelieve: 45, retratoContraste: 55, semilla: 2049 },
+    params: { caudal: 300, calado: 1.4, marea: 34, corriente: 0, cauce: 0, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoLongitud: 38, retratoCapas: 3, retratoContorno: 40, retratoDetalle: 40, retratoRelieve: 45, retratoContraste: 55, semilla: 2049 },
   },
   {
     nombre: 'Buril',
     descripcion: 'Rizos de buril que crecen en la sombra (pelo del billete)',
     mode: 'retrato',
-    params: { caudal: 210, calado: 1.2, marea: 48, corriente: 6, cauce: 15, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'bucle', retratoLongitud: 22, retratoCapas: 2, retratoContorno: 45, retratoDetalle: 55, retratoRelieve: 40, retratoContraste: 52, semilla: 2049 },
+    params: { caudal: 200, calado: 1.3, marea: 44, corriente: 0, cauce: 0, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'bucle', retratoLongitud: 26, retratoCapas: 2, retratoContorno: 35, retratoDetalle: 45, retratoRelieve: 40, retratoContraste: 52, semilla: 2049 },
   },
   {
     nombre: 'Topográfico',
-    descripcion: 'Línea recta con relieve fuerte — el volumen manda',
+    descripcion: 'Recta pura con relieve fuerte — sólo el volumen dibuja',
     mode: 'retrato',
-    params: { caudal: 190, calado: 1.6, marea: 18, corriente: 6, cauce: 0, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'recta', retratoLongitud: 40, retratoCapas: 2, retratoContorno: 30, retratoDetalle: 40, retratoRelieve: 85, retratoContraste: 50, semilla: 2049 },
+    params: { caudal: 230, calado: 1.5, marea: 0, corriente: 0, cauce: 0, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'recta', retratoLongitud: 40, retratoCapas: 2, retratoContorno: 0, retratoDetalle: 30, retratoRelieve: 95, retratoContraste: 52, semilla: 2049 },
   },
   {
     nombre: 'Pasaporte',
-    descripcion: 'Malla bicolor finísima: 2ª trama a 90° en agua',
+    descripcion: 'Trama de documento finísima: pluma fina, onda corta',
     mode: 'retrato',
-    params: { caudal: 340, calado: 0.75, marea: 16, corriente: 10, cauce: 20, deriva: 90, colorDeriva: '#FBFD9D', curso: 0, orillas: 4, retratoTrazo: 'onda', retratoLongitud: 25, retratoCapas: 2, retratoContorno: 40, retratoDetalle: 45, retratoRelieve: 30, retratoContraste: 45, semilla: 2049 },
+    params: { caudal: 360, calado: 1.0, marea: 22, corriente: 0, cauce: 0, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoLongitud: 28, retratoCapas: 2, retratoContorno: 30, retratoDetalle: 50, retratoRelieve: 30, retratoContraste: 48, semilla: 2049 },
   },
   {
     nombre: 'Filatelia',
-    descripcion: 'Sello postal: denso, contrastado, contorno marcado',
+    descripcion: 'Sello postal: pluma gruesa, pocas líneas, negro denso',
     mode: 'retrato',
-    params: { caudal: 150, calado: 2, marea: 28, corriente: 8, cauce: 0, deriva: 0, curso: 0, orillas: 6, retratoTrazo: 'onda', retratoLongitud: 28, retratoCapas: 3, retratoContorno: 50, retratoDetalle: 70, retratoRelieve: 50, retratoContraste: 62, semilla: 2049 },
+    params: { caudal: 140, calado: 1.8, marea: 30, corriente: 0, cauce: 0, deriva: 0, curso: 0, orillas: 6, retratoTrazo: 'onda', retratoLongitud: 32, retratoCapas: 3, retratoContorno: 45, retratoDetalle: 65, retratoRelieve: 50, retratoContraste: 62, semilla: 2049 },
   },
   {
     nombre: 'Fluvial',
-    descripcion: 'La corriente lleva el retrato — contorno y marea altos',
+    descripcion: 'La corriente lleva el retrato — onda larga, contorno alto',
     mode: 'retrato',
-    params: { caudal: 170, calado: 1.3, marea: 62, corriente: 40, cauce: 60, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoLongitud: 60, retratoCapas: 1, retratoContorno: 70, retratoDetalle: 45, retratoRelieve: 35, retratoContraste: 50, semilla: 2049 },
+    params: { caudal: 180, calado: 1.3, marea: 70, corriente: 10, cauce: 12, deriva: 0, curso: 0, orillas: 4, retratoTrazo: 'onda', retratoLongitud: 70, retratoCapas: 1, retratoContorno: 65, retratoDetalle: 40, retratoRelieve: 35, retratoContraste: 50, semilla: 2049 },
   },
 
   // --- SÍMBOLO ---
